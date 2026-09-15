@@ -1,0 +1,166 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light Mode Palette (Default) */
+    --color-slate-950: 248 250 252; /* slate-50 background #f8fafc */
+    --color-slate-900: 255 255 255; /* pure white cards #ffffff */
+    --color-slate-850: 241 245 249; /* slate-100 subtle #f1f5f9 */
+    --color-slate-800: 226 232 240; /* slate-200 inputs, borders #e2e8f0 */
+    --color-slate-700: 203 213 225; /* slate-300 lines #cbd5e1 */
+    --color-slate-600: 148 163 184; /* slate-400 #94a3b8 */
+    --color-slate-500: 100 116 139; /* slate-500 muted text #64748b */
+    --color-slate-400: 71 85 105;   /* slate-600 secondary text #475569 */
+    --color-slate-300: 51 65 85;    /* slate-700 body text #334155 */
+    --color-slate-200: 30 41 59;    /* slate-800 dark text #1e293b */
+    --color-slate-100: 15 23 42;    /* slate-900 heading text #0f172a */
+    --color-slate-50: 2 6 23;       /* slate-950 deep text #020617 */
+
+    --color-navy-950: 248 250 252;
+    --color-navy-900: 255 255 255;
+    --color-navy-850: 241 245 249;
+    --color-navy-800: 226 232 240;
+  }
+
+  .dark {
+    /* Dark Mode Palette (Navy / Slate Blue) */
+    --color-slate-950: 5 8 17;      /* #050811 */
+    --color-slate-900: 9 15 30;     /* #090f1e */
+    --color-slate-850: 13 22 42;    /* #0d162a */
+    --color-slate-800: 30 41 59;    /* #1e293b */
+    --color-slate-700: 51 65 85;    /* #334155 */
+    --color-slate-600: 71 85 105;   /* #475569 */
+    --color-slate-500: 100 116 139; /* #64748b */
+    --color-slate-400: 148 163 184; /* #94a3b8 */
+    --color-slate-300: 203 213 225; /* #cbd5e1 */
+    --color-slate-200: 226 232 240; /* #e2e8f0 */
+    --color-slate-100: 241 245 249; /* #f1f5f9 */
+    --color-slate-50: 248 250 252;  /* #f8fafc */
+
+    --color-navy-950: 5 8 17;
+    --color-navy-900: 9 15 30;
+    --color-navy-850: 13 22 42;
+    --color-navy-800: 17 28 53;
+  }
+
+  body {
+    @apply bg-slate-950 text-slate-100 font-sans transition-colors duration-200;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+/* Light mode text-white normalization on non-colored surfaces */
+:root:not(.dark) h1.text-white,
+:root:not(.dark) h2.text-white,
+:root:not(.dark) h3.text-white,
+:root:not(.dark) h4.text-white,
+:root:not(.dark) strong.text-white,
+:root:not(.dark) td.text-white,
+:root:not(.dark) th.text-white,
+:root:not(.dark) span.text-white:not([class*="bg-sky-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-rose-"]):not([class*="bg-brand-"]):not([class*="bg-blue-"]):not([class*="bg-indigo-"]),
+:root:not(.dark) div.text-white:not([class*="bg-sky-"]):not([class*="bg-emerald-"]):not([class*="bg-amber-"]):not([class*="bg-rose-"]):not([class*="bg-brand-"]):not([class*="bg-blue-"]):not([class*="bg-indigo-"]):not([class*="bg-purple-"]) {
+  color: #0f172a;
+}
+
+/* Light mode card border enhancement */
+:root:not(.dark) .border-slate-800 {
+  border-color: #e2e8f0;
+}
+:root:not(.dark) .border-slate-700 {
+  border-color: #cbd5e1;
+}
+
+/* Light mode card subtle shadow */
+:root:not(.dark) .bg-slate-900 {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+}
+
+/* Custom scrollbars */
+.dark ::-webkit-scrollbar-track {
+  background: #090f1e;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #1e293b;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+:root:not(.dark) ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+:root:not(.dark) ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+:root:not(.dark) ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+/* Leaflet theme styling */
+.dark .leaflet-container {
+  background: #090f1e !important;
+  font-family: inherit !important;
+}
+:root:not(.dark) .leaflet-container {
+  background: #f8fafc !important;
+  font-family: inherit !important;
+}
+
+.dark .leaflet-popup-content-wrapper {
+  background: #0f172a !important;
+  color: #f8fafc !important;
+  border: 1px solid #1e293b !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6) !important;
+}
+:root:not(.dark) .leaflet-popup-content-wrapper {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1) !important;
+}
+
+.dark .leaflet-popup-tip {
+  background: #0f172a !important;
+}
+:root:not(.dark) .leaflet-popup-tip {
+  background: #ffffff !important;
+}
+
+.leaflet-popup-content {
+  margin: 12px 14px !important;
+  line-height: 1.4 !important;
+}
+
+.custom-vehicle-marker {
+  background: transparent;
+  border: none;
+}
+
+/* Printable Windshield Transit Pass Styles */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-pass, #printable-pass * {
+    visibility: visible;
+  }
+  #printable-pass {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 20px;
+    background: white !important;
+    color: black !important;
+  }
+}

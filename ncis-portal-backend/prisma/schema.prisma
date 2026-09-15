@@ -1,0 +1,294 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// -------------------------------------------------------------
+// 1. STAKEHOLDER USERS & ROLES
+// -------------------------------------------------------------
+
+model User {
+  id                  String    @id @default(uuid())
+  email               String    @unique
+  passwordHash        String
+  fullName            String
+  role                String    // SUPER_ADMIN, IMPORTER_SUPPLIER, SHIPPING_COMPANY, PORT_OPERATOR, CUSTOMS_AUTHORITY, TRANSPORT_FORWARDER, FINANCIAL_INSURANCE, VEHICLE_REGISTRATION
+  organization        String?
+  phone               String?
+  demoTwoFactorBypass Boolean   @default(true)
+  twoFactorEnabled    Boolean   @default(true)
+  twoFactorSecret     String?   @default("NCISDEMOSECRET2026")
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @default(now()) @updatedAt
+
+  // Relationships
+  createdShipments    Shipment[]         @relation("ImporterShipments")
+  uploadedDocuments   Document[]         @relation("UserDocuments")
+  auditLogs           AuditLog[]         @relation("UserAuditLogs")
+  createdTickets      Ticket[]           @relation("CreatedTickets")
+  sentMessages        TicketMessage[]    @relation("UserMessages")
+  inspections         InspectionRecord[] @relation("InspectorRecords")
+}
+
+// -------------------------------------------------------------
+// 2. SHIPMENT & LIFECYCLE STATE MACHINE
+// -------------------------------------------------------------
+
+model Shipment {
+  id                  String              @id @default(uuid())
+  trackingNumber      String              @unique // e.g. "ET-SHP-2026-001"
+  title               String?
+  billOfLadingNumber  String?
+  originPort          String              // e.g. "Port of Nagoya, Japan", "Jebel Ali, UAE"
+  transitPort         String?             @default("Port of Djibouti")
+  destinationPort     String              // e.g. "Modjo Dry Port", "Kality Dry Port, Addis Ababa"
+  currentStage        String              @default("PRE_IMPORT") // PRE_IMPORT, SHIPPING, PORT_OPERATIONS, CUSTOMS, POST_CUSTOMS, DELIVERY
+  status              String              @default("DRAFT")
+  importerId          String
+  delayRiskRating     String              @default("LOW") // LOW, MEDIUM, HIGH, CRITICAL
+  estimatedArrival    DateTime?
+  actualArrival       DateTime?
+  containerNumber     String?
+  vesselName          String?
+  shippingLine        String?
+  voyageNumber        String?
+  currentLocationName String?             @default("Port of Djibouti")
+  currentLatitude     Float?              @default(11.595)
+  currentLongitude    Float?              @default(43.148)
+  notes               String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  // Relationships
+  importer            User                @relation("ImporterShipments", fields: [importerId], references: [id])
+  vehicles            Vehicle[]
+  documents           Document[]
+  customsDeclaration  CustomsDeclaration?
+  inspectionRecords   InspectionRecord[]
+  auditLogs           AuditLog[]
+  tickets             Ticket[]
+
+  @@index([trackingNumber])
+  @@index([importerId])
+  @@index([currentStage])
+  @@index([status])
+}
+
+// -------------------------------------------------------------
+// 3. VEHICLE ENTITY & REGISTRATION
+// -------------------------------------------------------------
+
+model Vehicle {
+  id                 String             @id @default(uuid())
+  shipmentId         String
+  vin                String             @unique
+  make               String             // Toyota, Hyundai, Isuzu, BYD
+  model              String
+  year               Int
+  engineCc           Int
+  fuelType           String             // PETROL, DIESEL, HYBRID, ELECTRIC
+  cifValue           Float
+  color              String
+  registrationPlate  String?
+  titleIssued        Boolean            @default(false)
+  qrCodePayload      String
+  fobPriceUsd        Float?             @default(0)
+  freightUsd         Float?             @default(0)
+  insuranceUsd       Float?             @default(0)
+  exchangeRate       Float?             @default(125.50)
+  chassisNumber      String?
+  registrationStatus String?            @default("PENDING_IMPORT")
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  // Relationships
+  shipment           Shipment           @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  inspections        InspectionRecord[]
+
+  @@index([vin])
+  @@index([shipmentId])
+}
+
+// -------------------------------------------------------------
+// 4. DOCUMENT MANAGEMENT & OCR DATA
+// -------------------------------------------------------------
+
+model Document {
+  id                 String    @id @default(uuid())
+  shipmentId         String
+  uploaderId         String?
+  type               String    // COMMERCIAL_INVOICE, BILL_OF_LADING, CUSTOMS_DECLARATION, INSURANCE_CERTIFICATE, INSPECTION_REPORT, BANK_LC, PACKING_LIST
+  fileName           String
+  filePath           String
+  version            Int       @default(1)
+  ocrDataJson        String?
+  signedBy           String?
+  signedAt           DateTime?
+  fileSizeBytes      Int       @default(102400)
+  mimeType           String    @default("application/pdf")
+  status             String    @default("VERIFIED")
+  ocrConfidenceScore Float?    @default(0.95)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  // Relationships
+  shipment           Shipment  @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  uploader           User?     @relation("UserDocuments", fields: [uploaderId], references: [id])
+
+  @@index([shipmentId])
+  @@index([type])
+}
+
+// -------------------------------------------------------------
+// 5. CUSTOMS DECLARATION & TAX VALUATION
+// -------------------------------------------------------------
+
+model CustomsDeclaration {
+  id                 String    @id @default(uuid())
+  shipmentId         String    @unique
+  declarationNumber  String    @unique // e.g. "ECC-DEC-2026-00142"
+  assessedCif        Float
+  dutyAmount         Float
+  exciseAmount       Float
+  vatAmount          Float
+  surtaxAmount       Float
+  withholdingAmount  Float
+  totalPayable       Float
+  paymentStatus      String    @default("UNPAID") // UNPAID, PENDING_BANK_CLEARANCE, PAID, EXEMPTED
+  formalPdfPath      String?
+  declarantName      String?
+  declarantTin       String?   // 10-digit Ethiopian TIN
+  customsOffice      String?   @default("Modjo Dry Port Customs Branch")
+  channel            String?   @default("YELLOW") // GREEN, YELLOW, RED
+  paymentReference   String?
+  paymentDate        DateTime?
+  clearedAt          DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  // Relationships
+  shipment           Shipment  @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([declarationNumber])
+  @@index([paymentStatus])
+}
+
+// -------------------------------------------------------------
+// 6. VEHICLE ROADWORTHINESS INSPECTION
+// -------------------------------------------------------------
+
+model InspectionRecord {
+  id                 String    @id @default(uuid())
+  shipmentId         String
+  vehicleId          String?
+  inspectorId        String?
+  inspectionType     String    @default("ROADWORTHINESS")
+  passed             Boolean   @default(true)
+  findings           String?
+  certificateNumber  String    @unique // e.g. "MOTL-INSP-2026-8842"
+  inspectorName      String?
+  inspectionDate     DateTime  @default(now())
+  chassisVerified    Boolean   @default(true)
+  engineVerified     Boolean   @default(true)
+  emissionsStandard  String?   @default("EURO_4") // EURO_4, EURO_5, EV_ZERO_EMISSION
+  roadworthyStatus   String?   @default("PASSED")
+  assignedPlate      String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  // Relationships
+  shipment           Shipment  @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  vehicle            Vehicle?  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  inspector          User?     @relation("InspectorRecords", fields: [inspectorId], references: [id])
+
+  @@index([shipmentId])
+  @@index([certificateNumber])
+}
+
+// -------------------------------------------------------------
+// 7. IMMUTABLE AUDIT LOG (SHA-256 HASH CHAINING)
+// -------------------------------------------------------------
+
+model AuditLog {
+  id                String    @id @default(uuid())
+  shipmentId        String?
+  actorId           String?
+  actorRole         String?
+  actorName         String?
+  action            String    // SHIPMENT_CREATED, STAGE_UPDATED, DUTY_CALCULATED, DECLARATION_FILED, PAYMENT_SETTLED, INSPECTION_PASSED, PLATE_ALLOCATED
+  stage             String?
+  details           String?
+  previousStateJson String?
+  newStateJson      String?
+  timestamp         DateTime  @default(now())
+  hash              String    // SHA-256 hash of this record + previousHash
+  previousHash      String?   // SHA-256 hash of previous record
+  ipAddress         String?   @default("127.0.0.1")
+
+  // Relationships
+  shipment          Shipment? @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
+  actor             User?     @relation("UserAuditLogs", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([shipmentId])
+  @@index([timestamp])
+  @@index([hash])
+}
+
+// -------------------------------------------------------------
+// 8. DISPUTE & QUERY TICKETING SYSTEM
+// -------------------------------------------------------------
+
+model Ticket {
+  id           String          @id @default(uuid())
+  ticketNumber String?         @unique // e.g. "DISP-2026-0012"
+  shipmentId   String
+  creatorId    String
+  assignedRole String          // CUSTOMS_AUTHORITY, PORT_OPERATOR, SHIPPING_COMPANY, etc.
+  title        String
+  category     String          // VALUATION_DISPUTE, CUSTOMS_HOLD, DOCUMENT_DEFICIENCY, PORT_DELAY, INSPECTION_FAIL
+  priority     String          @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  status       String          @default("OPEN") // OPEN, IN_REVIEW, RESOLVED, CLOSED
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  // Relationships
+  shipment     Shipment        @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  creator      User            @relation("CreatedTickets", fields: [creatorId], references: [id])
+  messages     TicketMessage[]
+
+  @@index([shipmentId])
+  @@index([assignedRole])
+  @@index([status])
+}
+
+model TicketMessage {
+  id        String   @id @default(uuid())
+  ticketId  String
+  senderId  String
+  message   String
+  createdAt DateTime @default(now())
+
+  // Relationships
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  sender    User     @relation("UserMessages", fields: [senderId], references: [id])
+
+  @@index([ticketId])
+}
+
+// -------------------------------------------------------------
+// 9. SIMULATED EXTERNAL SERVICES STATE
+// -------------------------------------------------------------
+
+model ExternalSimulationState {
+  id        String   @id @default(uuid())
+  key       String   @unique // ASYCUDA_CUSTOMS, PORT_DJIBOUTI_TOS, PORT_BERBERA_TOS, CBE_BANK_GATEWAY, MOTL_INSPECTION_API
+  status    String   @default("OPERATIONAL") // OPERATIONAL, DEGRADED, CONGESTED, OFFLINE
+  dataJson  String?
+  updatedAt DateTime @updatedAt
+
+  @@index([key])
+}

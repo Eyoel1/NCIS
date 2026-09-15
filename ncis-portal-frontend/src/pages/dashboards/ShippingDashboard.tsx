@@ -1,0 +1,293 @@
+import React, { useState, useEffect } from 'react';
+import { api } from '../../services/api';
+import { Shipment } from '../../types';
+import { StatusBadge } from '../../components/common/StatusBadge';
+import { Modal } from '../../components/common/Modal';
+import {
+  Ship,
+  Anchor,
+  Compass,
+  FileCheck,
+  CheckCircle2,
+  Calendar,
+  AlertTriangle,
+  Clock,
+  ArrowRight,
+} from 'lucide-react';
+
+export const ShippingDashboard: React.FC = () => {
+  const [shipments, setShipments] = useState<Shipment[]>([]);
+  const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
+  const [showBolModal, setShowBolModal] = useState(false);
+  const [bolSuccess, setBolSuccess] = useState(false);
+
+  // Sea transit status form
+  const [vesselName, setVesselName] = useState('MV Horn Pioneer');
+  const [newLocation, setNewLocation] = useState('Gulf of Aden - Bab el Mandeb Approach');
+  const [transitUpdated, setTransitUpdated] = useState(false);
+
+  useEffect(() => {
+    async function loadData() {
+      const data = await api.getShipments();
+      setShipments(data);
+    }
+    loadData();
+  }, []);
+
+  const handleIssueBol = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedShipment) return;
+    try {
+      await api.updateStage(selectedShipment.id, 'SHIPPING', 'Bill of Lading officially issued by Horn Maritime Line.');
+      setBolSuccess(true);
+      setTimeout(() => {
+        setBolSuccess(false);
+        setShowBolModal(false);
+      }, 1500);
+    } catch {
+      // Ignore
+    }
+  };
+
+  const handleUpdateTransit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setTransitUpdated(true);
+    setTimeout(() => setTransitUpdated(false), 2000);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="p-1.5 rounded-lg bg-sky-500/20 text-sky-400 border border-sky-500/30">
+              <Ship className="h-5 w-5" />
+            </span>
+            <h1 className="text-xl font-bold text-white">Shipping Line Fleet Operations Command</h1>
+          </div>
+          <p className="text-xs text-slate-400 mt-1">
+            Horn Maritime Line • Ocean freight, electronic manifests, B/L issuance, and vessel telematics.
+          </p>
+        </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-xl">
+          <span className="text-slate-400 text-xs font-semibold uppercase">Vessels En Route</span>
+          <div className="text-2xl font-black text-white font-mono mt-1">3 Ships</div>
+          <p className="text-[11px] text-sky-400 mt-0.5">Gulf of Aden / Red Sea</p>
+        </div>
+        <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-xl">
+          <span className="text-slate-400 text-xs font-semibold uppercase">Manifested Vehicles</span>
+          <div className="text-2xl font-black text-emerald-400 font-mono mt-1">450 Units</div>
+          <p className="text-[11px] text-slate-400 mt-0.5">Under Active B/L Manifest</p>
+        </div>
+        <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-xl">
+          <span className="text-slate-400 text-xs font-semibold uppercase">Pending Arrival Notices</span>
+          <div className="text-2xl font-black text-amber-400 font-mono mt-1">2 Pending</div>
+          <p className="text-[11px] text-slate-400 mt-0.5">ETA &lt; 24h to Djibouti</p>
+        </div>
+        <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-xl">
+          <span className="text-slate-400 text-xs font-semibold uppercase">On-Time Voyage Rate</span>
+          <div className="text-2xl font-black text-teal-400 font-mono mt-1">94.2%</div>
+          <p className="text-[11px] text-emerald-400 mt-0.5">Optimal Sea Transit</p>
+        </div>
+      </div>
+
+      {/* Fleet Schedule & Live Status Updater */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Active Fleet Schedule */}
+        <div className="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+            <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <Compass className="h-4 w-4 text-sky-400" />
+              Active Maritime Voyage Schedule
+            </span>
+            <span className="text-[10px] font-mono text-slate-400">Voyages 2026-Q3</span>
+          </div>
+
+          <div className="space-y-3">
+            {[
+              {
+                vessel: 'MV Horn Pioneer (IMO 9482014)',
+                voyage: 'HP-2026-09A',
+                route: 'Jebel Ali (AEJEA) → Port of Djibouti (DJJIB)',
+                status: 'AT_SEA',
+                eta: '18h (Sep 16, 06:00)',
+                capacity: '220 Vehicles (98% Laden)',
+              },
+              {
+                vessel: 'MV Red Sea Trader (IMO 9283741)',
+                voyage: 'RST-2026-11B',
+                route: 'Yokohama (JPYOK) → Port of Djibouti (DJJIB)',
+                status: 'AT_PORT',
+                eta: 'Berthing at Doraleh RoRo',
+                capacity: '140 Vehicles (100% Laden)',
+              },
+              {
+                vessel: 'MV Gulf Express (IMO 9192842)',
+                voyage: 'GE-2026-04C',
+                route: 'Shanghai (CNSHA) → Port of Berbera (SOBBO)',
+                status: 'AT_SEA',
+                eta: '36h (Sep 17, 14:00)',
+                capacity: '90 Vehicles (EV Priority)',
+              },
+            ].map((v) => (
+              <div key={v.voyage} className="bg-slate-950 p-4 rounded-xl border border-slate-800/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-white text-xs">{v.vessel}</span>
+                  <StatusBadge status={v.status} />
+                </div>
+                <p className="text-xs text-slate-300">{v.route}</p>
+                <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 pt-1 border-t border-slate-800/60">
+                  <span>ETA: <strong className="text-sky-300">{v.eta}</strong></span>
+                  <span>{v.capacity}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Sea Transit Updater Form */}
+        <div className="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+            <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <Anchor className="h-4 w-4 text-emerald-400" />
+              Transmit AIS Telematics Update
+            </span>
+          </div>
+
+          <form onSubmit={handleUpdateTransit} className="space-y-4 text-xs">
+            <div>
+              <label className="block text-slate-300 font-medium mb-1">Vessel</label>
+              <select
+                value={vesselName}
+                onChange={(e) => setVesselName(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+              >
+                <option value="MV Horn Pioneer">MV Horn Pioneer (Voyage HP-2026-09A)</option>
+                <option value="MV Red Sea Trader">MV Red Sea Trader (Voyage RST-2026-11B)</option>
+                <option value="MV Gulf Express">MV Gulf Express (Voyage GE-2026-04C)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-slate-300 font-medium mb-1">Current AIS Position / Waypoint</label>
+              <input
+                type="text"
+                value={newLocation}
+                onChange={(e) => setNewLocation(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-300 font-medium mb-1">Notice of Arrival (NOA) Broadcast</label>
+              <select className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                <option>Transmit Electronic NOA to Djibouti Port Authority (Doraleh TOS)</option>
+                <option>Transmit Electronic NOA to DP World Berbera</option>
+                <option>Customs Advance Cargo Declaration Sync</option>
+              </select>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-2.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold flex items-center justify-center gap-1.5 transition-colors"
+            >
+              {transitUpdated ? <CheckCircle2 className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+              <span>{transitUpdated ? 'Telematics Broadcasted!' : 'Broadcast Position & ETA'}</span>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* Cargo Manifest & B/L Issuance Table */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+          <span className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            <FileCheck className="h-4 w-4 text-sky-400" />
+            Consignment Manifest & Bill of Lading (B/L) Control
+          </span>
+          <span className="text-xs text-slate-400">Cargo Stowed in Holds 1-4</span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b border-slate-800 text-slate-400 uppercase text-[10px]">
+                <th className="pb-2.5">B/L Number</th>
+                <th className="pb-2.5">Container #</th>
+                <th className="pb-2.5">Consigned Vehicle</th>
+                <th className="pb-2.5">Loading Port</th>
+                <th className="pb-2.5">Stage</th>
+                <th className="pb-2.5 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/60 font-mono">
+              {shipments.map((shp) => (
+                <tr key={shp.id} className="hover:bg-slate-800/40 transition-colors">
+                  <td className="py-3 text-sky-400 font-bold">{shp.billOfLadingNumber || 'PENDING-BL'}</td>
+                  <td className="py-3 text-slate-300">{shp.containerNumber || 'MSKU-PENDING'}</td>
+                  <td className="py-3 font-sans text-white">{shp.title}</td>
+                  <td className="py-3 font-sans text-slate-400">{shp.originPort}</td>
+                  <td className="py-3">
+                    <StatusBadge status={shp.currentStage} />
+                  </td>
+                  <td className="py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedShipment(shp);
+                        setShowBolModal(true);
+                      }}
+                      className="px-2.5 py-1 rounded bg-sky-950 text-sky-300 hover:bg-sky-900 border border-sky-800 text-[11px] font-semibold transition-colors"
+                    >
+                      Issue / Endorse B/L
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Bill of Lading Issuance Modal */}
+      {selectedShipment && (
+        <Modal
+          isOpen={showBolModal}
+          onClose={() => setShowBolModal(false)}
+          title={`Endorse Bill of Lading: ${selectedShipment.billOfLadingNumber || 'NEW B/L'}`}
+          subtitle="Horn Maritime Line • Ocean Bill of Lading Authorization"
+        >
+          <form onSubmit={handleIssueBol} className="space-y-4 text-xs font-mono">
+            <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1">
+              <p className="text-slate-400 font-sans">Vessel: <strong className="text-white">{selectedShipment.vesselName || 'MV Horn Pioneer'}</strong></p>
+              <p className="text-slate-400 font-sans">Consignee: <strong className="text-white">{selectedShipment.importer?.organization || 'Ethio Auto Imports PLC'}</strong></p>
+              <p className="text-slate-400 font-sans">Discharge Port: <strong className="text-white">{selectedShipment.transitPort || 'Port of Djibouti'}</strong></p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-800 font-sans">
+              <button
+                type="button"
+                onClick={() => setShowBolModal(false)}
+                className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold flex items-center gap-1.5"
+              >
+                {bolSuccess && <CheckCircle2 className="h-4 w-4" />}
+                <span>{bolSuccess ? 'B/L Transmitted!' : 'Transmit Electronic B/L'}</span>
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+    </div>
+  );
+};
