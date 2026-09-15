@@ -82,7 +82,7 @@ export const DutyCalculatorWidget: React.FC<DutyCalculatorWidgetProps> = ({
       {/* Input Parameters */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div>
-          <label className="block text-xs font-medium text-slate-300 mb-1.5">
+          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
             {t('customs.cif', 'CIF Value (ETB)')}
           </label>
           <div className="relative">
@@ -91,14 +91,14 @@ export const DutyCalculatorWidget: React.FC<DutyCalculatorWidgetProps> = ({
               data-testid="input-cif"
               value={cifValue}
               onChange={(e) => setCifValue(Math.max(0, Number(e.target.value)))}
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono font-bold text-white focus:outline-none focus:border-sky-500"
+              className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
               placeholder="e.g. 2500000"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-slate-300 mb-1.5">
+          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
             {t('vehicle.engineCc', 'Engine Capacity (cc)')}
           </label>
           <input
@@ -107,20 +107,20 @@ export const DutyCalculatorWidget: React.FC<DutyCalculatorWidgetProps> = ({
             value={engineCc}
             disabled={fuelType === 'ELECTRIC'}
             onChange={(e) => setEngineCc(Math.max(0, Number(e.target.value)))}
-            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono font-bold text-white focus:outline-none focus:border-sky-500 disabled:opacity-50"
+            className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs font-mono font-bold text-slate-900 dark:text-white focus:outline-none focus:border-sky-500 disabled:opacity-50"
             placeholder="e.g. 1800"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-slate-300 mb-1.5">
+          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
             {t('vehicle.fuelType', 'Powertrain / Fuel')}
           </label>
           <select
             data-testid="select-fuel-type"
             value={fuelType}
             onChange={(e) => setFuelType(e.target.value as FuelType)}
-            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-sky-500"
+            className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
           >
             <option value="PETROL">Petrol (Internal Combustion)</option>
             <option value="DIESEL">Diesel</option>
@@ -130,14 +130,14 @@ export const DutyCalculatorWidget: React.FC<DutyCalculatorWidgetProps> = ({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-slate-300 mb-1.5">
+          <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
             Classification
           </label>
           <select
             data-testid="select-category"
             value={category}
             onChange={(e) => setCategory(e.target.value as any)}
-            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-sky-500"
+            className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:border-sky-500"
           >
             <option value="PASSENGER">Standard Passenger Car (35% Duty)</option>
             <option value="COMMERCIAL">Commercial Freight / Truck (10% Duty)</option>

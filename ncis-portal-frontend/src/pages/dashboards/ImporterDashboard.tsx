@@ -86,13 +86,28 @@ export const ImporterDashboard: React.FC = () => {
   };
 
   const handleAutoFillFromOcr = (ocr: any) => {
-    if (ocr.make) setMake(ocr.make);
-    if (ocr.model) setModel(ocr.model);
-    if (ocr.year) setYear(ocr.year);
-    if (ocr.engineCc) setEngineCc(ocr.engineCc);
-    if (ocr.fuelType) setFuelType(ocr.fuelType);
-    if (ocr.vin) setVin(ocr.vin);
-    if (ocr.cifEtb) setCifValue(ocr.cifEtb);
+    if (!ocr) return;
+    const getVal = (field: any) => {
+      if (field === null || field === undefined) return undefined;
+      if (typeof field === 'object' && 'value' in field) return field.value;
+      return field;
+    };
+
+    const makeVal = getVal(ocr.make);
+    const modelVal = getVal(ocr.model);
+    const yearVal = getVal(ocr.year ?? ocr.productionYear);
+    const engineCcVal = getVal(ocr.engineCc ?? ocr.engineDisplacementCc);
+    const fuelVal = getVal(ocr.fuelType);
+    const vinVal = getVal(ocr.vin ?? ocr.chassisNumber);
+    const cifVal = getVal(ocr.cifEtb ?? ocr.cifValue);
+
+    if (makeVal) setMake(String(makeVal));
+    if (modelVal) setModel(String(modelVal));
+    if (yearVal) setYear(Number(yearVal) || 2024);
+    if (engineCcVal) setEngineCc(Number(engineCcVal) || 1800);
+    if (fuelVal) setFuelType(String(fuelVal).toUpperCase() as FuelType);
+    if (vinVal) setVin(String(vinVal));
+    if (cifVal) setCifValue(Number(cifVal) || 2850000);
     setShowNewShipmentModal(true);
   };
 
@@ -264,51 +279,51 @@ export const ImporterDashboard: React.FC = () => {
         <form onSubmit={handleCreateShipment} className="space-y-4 text-xs">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-slate-300 font-medium mb-1">Vehicle Make</label>
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Vehicle Make</label>
               <input
                 type="text"
                 value={make}
                 onChange={(e) => setMake(e.target.value)}
                 required
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors"
               />
             </div>
             <div>
-              <label className="block text-slate-300 font-medium mb-1">Model</label>
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Model</label>
               <input
                 type="text"
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
                 required
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors"
               />
             </div>
             <div>
-              <label className="block text-slate-300 font-medium mb-1">Year of Manufacture</label>
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Year of Manufacture</label>
               <input
                 type="number"
                 value={year}
                 onChange={(e) => setYear(Number(e.target.value))}
                 required
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono"
+                className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors"
               />
             </div>
             <div>
-              <label className="block text-slate-300 font-medium mb-1">Engine Displacement (cc)</label>
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Engine Displacement (cc)</label>
               <input
                 type="number"
                 value={engineCc}
                 onChange={(e) => setEngineCc(Number(e.target.value))}
                 required
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono"
+                className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors"
               />
             </div>
             <div>
-              <label className="block text-slate-300 font-medium mb-1">Fuel Type</label>
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Fuel Type</label>
               <select
                 value={fuelType}
                 onChange={(e) => setFuelType(e.target.value as FuelType)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+                className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors"
               >
                 <option value="PETROL">Petrol</option>
                 <option value="DIESEL">Diesel</option>
@@ -317,40 +332,40 @@ export const ImporterDashboard: React.FC = () => {
               </select>
             </div>
             <div>
-              <label className="block text-slate-300 font-medium mb-1">Declared CIF Value (ETB)</label>
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Declared CIF Value (ETB)</label>
               <input
                 type="number"
                 value={cifValue}
                 onChange={(e) => setCifValue(Number(e.target.value))}
                 required
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono"
+                className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-slate-300 font-medium mb-1">Chassis VIN Number</label>
+            <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Chassis VIN Number</label>
             <input
               type="text"
               value={vin}
               onChange={(e) => setVin(e.target.value)}
               placeholder="Leave empty for auto-generated VIN (e.g. JTJHY7AX8N...)"
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono uppercase"
+              className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white font-mono uppercase focus:outline-none focus:ring-2 focus:ring-sky-500 transition-colors"
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
             <button
               type="button"
               onClick={() => setShowNewShipmentModal(false)}
-              className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 hover:text-white"
+              className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-medium transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={creating}
-              className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold"
+              className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold transition-colors shadow-sm disabled:opacity-50"
             >
               {creating ? 'Registering...' : 'Register Consignment'}
             </button>
@@ -374,11 +389,11 @@ export const ImporterDashboard: React.FC = () => {
       >
         <form onSubmit={handleCreateTicket} className="space-y-4 text-xs">
           <div>
-            <label className="block text-slate-300 font-medium mb-1">Target Shipment</label>
+            <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Target Shipment</label>
             <select
               value={selectedShipmentId}
               onChange={(e) => setSelectedShipmentId(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono"
+              className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-sky-500"
             >
               {shipments.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -389,11 +404,11 @@ export const ImporterDashboard: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-slate-300 font-medium mb-1">Dispute Category</label>
+            <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Dispute Category</label>
             <select
               value={ticketCategory}
               onChange={(e) => setTicketCategory(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+              className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
             >
               <option value="VALUATION_DISPUTE">Tariff Valuation Dispute (Depreciation / CC)</option>
               <option value="CUSTOMS_HOLD">Customs Clearance Hold</option>
@@ -403,40 +418,40 @@ export const ImporterDashboard: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-slate-300 font-medium mb-1">Subject / Summary</label>
+            <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Subject / Summary</label>
             <input
               type="text"
               value={ticketTitle}
               onChange={(e) => setTicketTitle(e.target.value)}
               placeholder="e.g. Valuation review for 2024 Hybrid rebate"
               required
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+              className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
             />
           </div>
 
           <div>
-            <label className="block text-slate-300 font-medium mb-1">Detailed Inquiry & Justification</label>
+            <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Detailed Inquiry & Justification</label>
             <textarea
               rows={4}
               value={ticketMessage}
               onChange={(e) => setTicketMessage(e.target.value)}
               placeholder="Specify references to relevant customs declaration lines, proforma invoice numbers..."
               required
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white"
+              className="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
             <button
               type="button"
               onClick={() => setShowTicketModal(false)}
-              className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300"
+              className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold flex items-center gap-1.5"
+              className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold flex items-center gap-1.5 transition-colors shadow-sm"
             >
               {ticketSubmitted ? <CheckCircle2 className="h-4 w-4" /> : null}
               <span>{ticketSubmitted ? 'Submitted!' : 'Submit Dispute'}</span>

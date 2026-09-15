@@ -64,6 +64,24 @@
   color: #0f172a;
 }
 
+/* Light mode form controls normalization */
+:root:not(.dark) input:not([type="submit"]):not([type="button"]):not([type="reset"]),
+:root:not(.dark) select,
+:root:not(.dark) textarea {
+  color: #0f172a !important;
+  background-color: #ffffff;
+  border-color: #cbd5e1;
+}
+
+:root:not(.dark) input::placeholder,
+:root:not(.dark) textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+:root:not(.dark) label {
+  color: #334155 !important;
+}
+
 /* Light mode card border enhancement */
 :root:not(.dark) .border-slate-800 {
   border-color: #e2e8f0;
