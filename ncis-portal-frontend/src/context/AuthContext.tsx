@@ -81,6 +81,7 @@ interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   login: (email: string, password?: string, twoFactorCode?: string) => Promise<boolean>;
+  register: (userData: { email: string; fullName: string; role: UserRole; organization?: string; phone?: string }) => Promise<boolean>;
   switchRole: (role: UserRole) => void;
   logout: () => void;
   demoBypassActive: boolean;
@@ -166,6 +167,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return true;
   };
 
+  const register = async (userData: { email: string; fullName: string; role: UserRole; organization?: string; phone?: string }): Promise<boolean> => {
+    const newUser: User = {
+      id: `usr-${Date.now()}`,
+      email: userData.email,
+      fullName: userData.fullName,
+      role: userData.role,
+      organization: userData.organization || 'Registered Trade Partner',
+      phone: userData.phone || '+251 911 000 000',
+      demoTwoFactorBypass: true,
+    };
+    setUser(newUser);
+    const newToken = `token-${newUser.role.toLowerCase()}-${Date.now()}`;
+    setToken(newToken);
+    try {
+      localStorage.setItem('ncis_user', JSON.stringify(newUser));
+      localStorage.setItem('ncis_token', newToken);
+      localStorage.setItem('ncis_role', newUser.role);
+    } catch {
+      // Ignore
+    }
+    return true;
+  };
+
   const logout = () => {
     setUser(null);
     setToken(null);
@@ -186,6 +210,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isAuthenticated: !!user,
         login,
         switchRole,
+        register,
         logout,
         demoBypassActive: true,
       }}
