@@ -3,6 +3,11 @@ import { api } from '../../services/api';
 import { Shipment, CustomsDeclaration } from '../../types';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { DutyCalculatorWidget } from '../../components/customs/DutyCalculatorWidget';
+import { ValuationFraudWidget } from '../../components/customs/ValuationFraudWidget';
+import { RevenueTrendChart, CustomsChannelDonutChart } from '../../components/charts/DashboardCharts';
+import { TableToolbar } from '../../components/common/TableToolbar';
+import { exportToCsv } from '../../utils/exportCsv';
+import { exportToPrintPdf } from '../../utils/exportPdf';
 import { DeclarationPdfPreview } from '../../components/customs/DeclarationPdfPreview';
 import { Modal } from '../../components/common/Modal';
 import { MOCK_SHIPMENTS } from '../../services/mockData';
@@ -26,6 +31,8 @@ export const CustomsDashboard: React.FC = () => {
   const [showChannelModal, setShowChannelModal] = useState(false);
   const [assignedChannel, setAssignedChannel] = useState<'GREEN' | 'YELLOW' | 'RED'>('GREEN');
   const [channelSuccess, setChannelSuccess] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [channelFilter, setChannelFilter] = useState('ALL');
 
   useEffect(() => {
     async function loadData() {
@@ -59,6 +66,40 @@ export const CustomsDashboard: React.FC = () => {
     } catch {
       // Ignore
     }
+  };
+
+  const filteredShipments = shipments.filter(shp => {
+    const q = searchQuery.toLowerCase();
+    const matchesSearch = !q ||
+      shp.trackingNumber?.toLowerCase().includes(q) ||
+      shp.vehicles?.[0]?.vin?.toLowerCase().includes(q) ||
+      shp.vehicles?.[0]?.make?.toLowerCase().includes(q) ||
+      shp.importer?.fullName?.toLowerCase().includes(q);
+
+    const matchesChannel = channelFilter === 'ALL' ||
+      shp.customsDeclaration?.channel === channelFilter ||
+      shp.customsAssessment?.channel === channelFilter;
+
+    return matchesSearch && matchesChannel;
+  });
+
+  const handleExportCsv = () => {
+    const headers = ['Tracking #', 'Importer', 'Vehicle Make/Model', 'Chassis/VIN', 'CIF (ETB)', 'Total Duty (ETB)', 'Channel', 'Payment Status'];
+    const rows = filteredShipments.map(s => [
+      s.trackingNumber || '',
+      s.importer?.fullName || s.importer?.organization || '',
+      `${s.vehicles?.[0]?.make || ''} ${s.vehicles?.[0]?.model || ''}`,
+      s.vehicles?.[0]?.vin || '',
+      s.customsDeclaration?.assessedCif || s.customsAssessment?.assessedCif || 0,
+      s.customsDeclaration?.totalPayable || s.customsAssessment?.totalPayable || 0,
+      s.customsDeclaration?.channel || s.customsAssessment?.channel || 'GREEN',
+      s.customsDeclaration?.paymentStatus || s.customsAssessment?.paymentStatus || 'UNPAID'
+    ]);
+    exportToCsv('Customs_Assessment_Declarations', headers, rows);
+  };
+
+  const handleExportPdf = () => {
+    exportToPrintPdf('Customs Assessment Declarations Roster');
   };
 
   return (
@@ -112,6 +153,28 @@ export const CustomsDashboard: React.FC = () => {
           <p className="text-[11px] text-sky-600 dark:text-sky-400 mt-0.5">Automated Tariff Engine</p>
         </div>
       </div>
+
+      {/* ECC Statutory Valuation & Anti-Underinvoicing Risk Engine */}
+      <ValuationFraudWidget />
+
+      {/* Analytics Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <CustomsChannelDonutChart />
+        <RevenueTrendChart />
+      </div>
+
+      {/* Table Toolbar */}
+      <TableToolbar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        selectedChannel={channelFilter}
+        onChannelChange={setChannelFilter}
+        config={{ channelFilter: true, stageFilter: false }}
+        onExportCsv={handleExportCsv}
+        onExportPdf={handleExportPdf}
+        totalCount={shipments.length}
+        filteredCount={filteredShipments.length}
+      />
 
       {/* Customs Declaration Assessment Queue */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">

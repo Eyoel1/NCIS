@@ -1,4 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { NationalSlaHeatmapWidget } from '../../components/admin/NationalSlaHeatmapWidget';
+import { RevenueTrendChart, PortCongestionBarChart } from '../../components/charts/DashboardCharts';
+import { TableToolbar } from '../../components/common/TableToolbar';
+import { exportToCsv } from '../../utils/exportCsv';
+import { exportToPrintPdf } from '../../utils/exportPdf';
 import { api } from '../../services/api';
 import { DEMO_USERS } from '../../context/AuthContext';
 import { UserRole, AuditLog } from '../../types';
@@ -23,6 +28,7 @@ export const SuperAdminDashboard: React.FC = () => {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [verifyResult, setVerifyResult] = useState<{
     valid: boolean;
     verifiedBlocks: number;
@@ -65,6 +71,27 @@ export const SuperAdminDashboard: React.FC = () => {
   };
 
   const roles = Object.keys(DEMO_USERS) as UserRole[];
+
+  const filteredAuditLogs = auditLogs.filter(log => {
+    const q = searchQuery.toLowerCase();
+    return !q ||
+      log.action?.toLowerCase().includes(q) ||
+      log.actorName?.toLowerCase().includes(q) ||
+      log.actorRole?.toLowerCase().includes(q) ||
+      log.hash?.toLowerCase().includes(q);
+  });
+
+  const handleExportCsv = () => {
+    const headers = ['Timestamp', 'Actor', 'Role', 'Action', 'SHA-256 Digest'];
+    const rows = filteredAuditLogs.map(l => [
+      l.timestamp || '',
+      l.actorName || '',
+      l.actorRole || '',
+      l.action || '',
+      l.hash || ''
+    ]);
+    exportToCsv('Cryptographic_Audit_Trail', headers, rows);
+  };
 
   return (
     <div className="space-y-6">

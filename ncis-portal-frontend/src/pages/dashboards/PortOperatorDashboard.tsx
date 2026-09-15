@@ -1,4 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { YardSlotMapWidget } from '../../components/port/YardSlotMapWidget';
+import { PortCongestionBarChart } from '../../components/charts/DashboardCharts';
+import { TableToolbar } from '../../components/common/TableToolbar';
+import { exportToCsv } from '../../utils/exportCsv';
+import { exportToPrintPdf } from '../../utils/exportPdf';
 import { api } from '../../services/api';
 import { Shipment } from '../../types';
 import { StatusBadge } from '../../components/common/StatusBadge';
@@ -18,6 +23,8 @@ import {
 export const PortOperatorDashboard: React.FC = () => {
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [portFilter, setPortFilter] = useState('ALL');
   const [showGateOutModal, setShowGateOutModal] = useState(false);
   const [gateOutSuccess, setGateOutSuccess] = useState(false);
 
@@ -53,6 +60,30 @@ export const PortOperatorDashboard: React.FC = () => {
     } catch {
       // Ignore
     }
+  };
+
+  const filteredShipments = shipments.filter(shp => {
+    const q = searchQuery.toLowerCase();
+    const matchesSearch = !q ||
+      shp.trackingNumber?.toLowerCase().includes(q) ||
+      shp.containerNumber?.toLowerCase().includes(q) ||
+      shp.vehicles?.[0]?.make?.toLowerCase().includes(q);
+
+    const matchesPort = portFilter === 'ALL' || shp.originPort === portFilter || shp.destinationPort === portFilter;
+    return matchesSearch && matchesPort;
+  });
+
+  const handleExportCsv = () => {
+    const headers = ['Tracking #', 'Container #', 'Consigned Vehicle', 'Port Terminal', 'Stage', 'Status'];
+    const rows = filteredShipments.map(s => [
+      s.trackingNumber || '',
+      s.containerNumber || '',
+      `${s.vehicles?.[0]?.make || ''} ${s.vehicles?.[0]?.model || ''}`,
+      s.originPort || 'Port of Djibouti',
+      s.currentStage || '',
+      s.status || ''
+    ]);
+    exportToCsv('Port_Terminal_Inventory', headers, rows);
   };
 
   return (

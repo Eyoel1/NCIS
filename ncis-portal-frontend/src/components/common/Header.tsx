@@ -57,6 +57,12 @@ export const Header: React.FC = () => {
               </Link>
             );
           })}
+          <Link
+            to="/login"
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition shadow-xs"
+          >
+            Portal Login
+          </Link>
         </nav>
 
         {/* Right: Controls (Role Switcher, Language, Theme Toggle) */}

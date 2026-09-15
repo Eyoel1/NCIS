@@ -1,4 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { ElectronicBolModal } from '../../components/shipping/ElectronicBolModal';
+import { TableToolbar } from '../../components/common/TableToolbar';
+import { exportToCsv } from '../../utils/exportCsv';
+import { exportToPrintPdf } from '../../utils/exportPdf';
 import { api } from '../../services/api';
 import { Shipment } from '../../types';
 import { StatusBadge } from '../../components/common/StatusBadge';
@@ -18,6 +22,8 @@ import {
 export const ShippingDashboard: React.FC = () => {
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
+  const [showEBolModal, setShowEBolModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [showBolModal, setShowBolModal] = useState(false);
   const [bolSuccess, setBolSuccess] = useState(false);
 
@@ -53,6 +59,28 @@ export const ShippingDashboard: React.FC = () => {
     e.preventDefault();
     setTransitUpdated(true);
     setTimeout(() => setTransitUpdated(false), 2000);
+  };
+
+  const filteredShipments = shipments.filter(shp => {
+    const q = searchQuery.toLowerCase();
+    return !q ||
+      shp.trackingNumber?.toLowerCase().includes(q) ||
+      shp.containerNumber?.toLowerCase().includes(q) ||
+      shp.billOfLadingNumber?.toLowerCase().includes(q) ||
+      shp.vehicles?.[0]?.make?.toLowerCase().includes(q);
+  });
+
+  const handleExportCsv = () => {
+    const headers = ['B/L Number', 'Container #', 'Vehicle', 'Loading Port', 'Discharge Port', 'Stage'];
+    const rows = filteredShipments.map(s => [
+      s.billOfLadingNumber || s.trackingNumber || '',
+      s.containerNumber || '',
+      `${s.vehicles?.[0]?.make || ''} ${s.vehicles?.[0]?.model || ''}`,
+      s.originPort || 'Jebel Ali, UAE',
+      s.destinationPort || 'Port of Djibouti',
+      s.currentStage || ''
+    ]);
+    exportToCsv('Ocean_Consignment_Manifests', headers, rows);
   };
 
   return (
@@ -287,6 +315,28 @@ export const ShippingDashboard: React.FC = () => {
             </div>
           </form>
         </Modal>
+      )}
+
+      {/* Official Electronic Ocean Bill of Lading Modal */}
+      {selectedShipment && (
+        <ElectronicBolModal
+          isOpen={showEBolModal}
+          onClose={() => setShowEBolModal(false)}
+          shipment={{
+            bolNumber: selectedShipment.billOfLadingNumber || 'HML-BOL-2026-84920',
+            vesselName: selectedShipment.vesselName || 'MV Horn Pioneer',
+            voyageNumber: selectedShipment.voyageNumber || 'HP-2026-09A',
+            originPort: selectedShipment.originPort || 'Port of Jebel Ali, UAE',
+            destinationPort: selectedShipment.destinationPort || 'Port of Djibouti (Doraleh)',
+            shipper: 'Toyota Tsusho Corporation (Dubai Logistics Hub)',
+            consignee: selectedShipment.importer?.fullName || 'Ethio Auto Imports PLC (To Order)',
+            containerNumber: selectedShipment.containerNumber || 'MSCU7849201',
+            sealNumber: 'ET-SEAL-99824',
+            cargoDescription: `1x40HQ Container S.T.C. ${selectedShipment.vehicles?.[0]?.make || 'Toyota'} ${selectedShipment.vehicles?.[0]?.model || 'Prado'} (VIN: ${selectedShipment.vehicles?.[0]?.vin || 'AHT02981048201'})`,
+            weightKg: 2850,
+            issueDate: '2026-02-22'
+          }}
+        />
       )}
     </div>
   );

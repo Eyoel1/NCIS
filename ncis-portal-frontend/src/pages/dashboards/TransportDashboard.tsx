@@ -1,4 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { EctsTelematicsWidget } from '../../components/transport/EctsTelematicsWidget';
+import { CorridorTransitChart } from '../../components/charts/DashboardCharts';
+import { TableToolbar } from '../../components/common/TableToolbar';
+import { exportToCsv } from '../../utils/exportCsv';
+import { exportToPrintPdf } from '../../utils/exportPdf';
 import { api } from '../../services/api';
 import { Shipment } from '../../types';
 import { StatusBadge } from '../../components/common/StatusBadge';
@@ -17,6 +22,7 @@ import {
 export const TransportDashboard: React.FC = () => {
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const [showDispatchModal, setShowDispatchModal] = useState(false);
   const [dispatchSuccess, setDispatchSuccess] = useState(false);
 
@@ -62,6 +68,26 @@ export const TransportDashboard: React.FC = () => {
     e.preventDefault();
     setWaypointLogged(true);
     setTimeout(() => setWaypointLogged(false), 2000);
+  };
+
+  const filteredShipments = shipments.filter(shp => {
+    const q = searchQuery.toLowerCase();
+    return !q ||
+      shp.trackingNumber?.toLowerCase().includes(q) ||
+      shp.containerNumber?.toLowerCase().includes(q) ||
+      shp.vehicles?.[0]?.make?.toLowerCase().includes(q);
+  });
+
+  const handleExportCsv = () => {
+    const headers = ['Tracking #', 'Container #', 'Vehicle', 'Terminal Destination', 'Corridor Stage'];
+    const rows = filteredShipments.map(s => [
+      s.trackingNumber || '',
+      s.containerNumber || '',
+      `${s.vehicles?.[0]?.make || ''} ${s.vehicles?.[0]?.model || ''}`,
+      s.destinationPort || 'Modjo Dry Port',
+      s.currentStage || ''
+    ]);
+    exportToCsv('Corridor_Freight_Dispatches', headers, rows);
   };
 
   return (

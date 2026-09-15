@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { Shipment } from '../types';
 import { LifecycleStepper } from '../components/tracking/LifecycleStepper';
+import { ActivityTimeline } from '../components/tracking/ActivityTimeline';
+import { VehiclePhotoGallery } from '../components/tracking/VehiclePhotoGallery';
 import { VehicleDossierCard } from '../components/tracking/VehicleDossierCard';
 import { CorridorMap } from '../components/map/CorridorMap';
 import { StatusBadge } from '../components/common/StatusBadge';

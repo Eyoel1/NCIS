@@ -1,4 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { NbeFxQueueWidget } from '../../components/finance/NbeFxQueueWidget';
+import { RevenueTrendChart } from '../../components/charts/DashboardCharts';
+import { TableToolbar } from '../../components/common/TableToolbar';
+import { exportToCsv } from '../../utils/exportCsv';
+import { exportToPrintPdf } from '../../utils/exportPdf';
 import { api } from '../../services/api';
 import { Shipment } from '../../types';
 import { StatusBadge } from '../../components/common/StatusBadge';
@@ -18,6 +23,8 @@ import {
 export const FinanceDashboard: React.FC = () => {
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [stageFilter, setStageFilter] = useState('ALL');
 
   // Modals
   const [showLcModal, setShowLcModal] = useState(false);
@@ -72,6 +79,31 @@ export const FinanceDashboard: React.FC = () => {
       setInsuranceSuccess(false);
       setShowInsuranceModal(false);
     }, 1500);
+  };
+
+  const filteredShipments = shipments.filter(shp => {
+    const q = searchQuery.toLowerCase();
+    const matchesSearch = !q ||
+      shp.trackingNumber?.toLowerCase().includes(q) ||
+      shp.importer?.fullName?.toLowerCase().includes(q) ||
+      shp.vehicles?.[0]?.make?.toLowerCase().includes(q);
+
+    const matchesStage = stageFilter === 'ALL' || shp.currentStage === stageFilter;
+    return matchesSearch && matchesStage;
+  });
+
+  const handleExportCsv = () => {
+    const headers = ['Tracking #', 'Importer', 'Vehicle', 'CIF Value (ETB)', 'Duty & Tax (ETB)', 'Escrow State', 'Stage'];
+    const rows = filteredShipments.map(s => [
+      s.trackingNumber || '',
+      s.importer?.fullName || '',
+      `${s.vehicles?.[0]?.make || ''} ${s.vehicles?.[0]?.model || ''}`,
+      s.vehicles?.[0]?.cifValue || 0,
+      s.customsDeclaration?.totalPayable || s.customsAssessment?.totalPayable || 0,
+      s.customsDeclaration?.paymentStatus || 'UNPAID',
+      s.currentStage || ''
+    ]);
+    exportToCsv('Trade_Finance_Instruments', headers, rows);
   };
 
   return (

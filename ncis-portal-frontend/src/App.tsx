@@ -9,6 +9,7 @@ import { Header } from './components/common/Header';
 // Pages
 import { LandingPage } from './pages/LandingPage';
 import { PublicTrackerPage } from './pages/PublicTrackerPage';
+import { LoginPage } from './pages/LoginPage';
 import { TransparencyStatsPage } from './pages/TransparencyStatsPage';
 import { DashboardLayout } from './pages/dashboards/DashboardLayout';
 import { SuperAdminDashboard } from './pages/dashboards/SuperAdminDashboard';
@@ -42,6 +43,7 @@ export const App: React.FC = () => {
                 <Routes>
                   {/* Public Unauthenticated Routes */}
                   <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<LoginPage />} />
                   <Route path="/track/:id" element={<PublicTrackerPage />} />
                   <Route path="/statistics" element={<TransparencyStatsPage />} />
 

@@ -1,4 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { LibreCertificateModal } from '../../components/registration/LibreCertificateModal';
+import { TableToolbar } from '../../components/common/TableToolbar';
+import { exportToCsv } from '../../utils/exportCsv';
+import { exportToPrintPdf } from '../../utils/exportPdf';
 import { api } from '../../services/api';
 import { Shipment, Vehicle } from '../../types';
 import { StatusBadge } from '../../components/common/StatusBadge';
@@ -20,6 +24,8 @@ import {
 export const RegistrationDashboard: React.FC = () => {
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
+  const [showLibreModal, setShowLibreModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Modals
   const [showInspectionModal, setShowInspectionModal] = useState(false);
@@ -79,6 +85,29 @@ export const RegistrationDashboard: React.FC = () => {
       setPlateSuccess(false);
       setShowPlateModal(false);
     }, 1500);
+  };
+
+  const filteredShipments = shipments.filter(shp => {
+    const q = searchQuery.toLowerCase();
+    return !q ||
+      shp.trackingNumber?.toLowerCase().includes(q) ||
+      shp.vehicles?.[0]?.vin?.toLowerCase().includes(q) ||
+      shp.vehicles?.[0]?.make?.toLowerCase().includes(q) ||
+      shp.importer?.fullName?.toLowerCase().includes(q);
+  });
+
+  const handleExportCsv = () => {
+    const headers = ['VIN / Chassis', 'Make & Model', 'Engine (CC)', 'Fuel Type', 'Owner', 'Plate #', 'Title Issued'];
+    const rows = filteredShipments.map(s => [
+      s.vehicles?.[0]?.vin || '',
+      `${s.vehicles?.[0]?.make || ''} ${s.vehicles?.[0]?.model || ''}`,
+      s.vehicles?.[0]?.engineCc || '',
+      s.vehicles?.[0]?.fuelType || '',
+      s.importer?.fullName || '',
+      s.vehicles?.[0]?.registrationPlate || 'Unassigned',
+      s.vehicles?.[0]?.titleIssued ? 'YES' : 'NO'
+    ]);
+    exportToCsv('MOTL_Vehicle_Registrations', headers, rows);
   };
 
   return (

@@ -1,4 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { LandedCostPredictorWidget } from '../../components/importer/LandedCostPredictorWidget';
+import { TableToolbar } from '../../components/common/TableToolbar';
+import { exportToCsv } from '../../utils/exportCsv';
+import { exportToPrintPdf } from '../../utils/exportPdf';
 import { api } from '../../services/api';
 import { Shipment, FuelType } from '../../types';
 import { StatusBadge } from '../../components/common/StatusBadge';
@@ -45,6 +49,8 @@ export const ImporterDashboard: React.FC = () => {
   const [ticketMessage, setTicketMessage] = useState('');
   const [selectedShipmentId, setSelectedShipmentId] = useState('');
   const [ticketSubmitted, setTicketSubmitted] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [stageFilter, setStageFilter] = useState('ALL');
 
   useEffect(() => {
     async function loadShipments() {
@@ -128,6 +134,30 @@ export const ImporterDashboard: React.FC = () => {
     } catch {
       // Ignore
     }
+  };
+
+  const filteredShipments = shipments.filter(shp => {
+    const q = searchQuery.toLowerCase();
+    const matchesSearch = !q ||
+      shp.trackingNumber?.toLowerCase().includes(q) ||
+      shp.vehicles?.[0]?.vin?.toLowerCase().includes(q) ||
+      shp.vehicles?.[0]?.make?.toLowerCase().includes(q);
+
+    const matchesStage = stageFilter === 'ALL' || shp.currentStage === stageFilter;
+    return matchesSearch && matchesStage;
+  });
+
+  const handleExportCsv = () => {
+    const headers = ['Tracking #', 'Vehicle', 'VIN / Chassis', 'CIF (ETB)', 'Stage', 'Status'];
+    const rows = filteredShipments.map(s => [
+      s.trackingNumber || '',
+      `${s.vehicles?.[0]?.make || ''} ${s.vehicles?.[0]?.model || ''}`,
+      s.vehicles?.[0]?.vin || '',
+      s.vehicles?.[0]?.cifValue || 0,
+      s.currentStage || '',
+      s.status || ''
+    ]);
+    exportToCsv('My_Import_Consignments', headers, rows);
   };
 
   return (
