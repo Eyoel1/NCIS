@@ -1,18 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useShipments } from '../../context/ShipmentContext';
 import { Bell, Check, Trash2, ShieldCheck, AlertTriangle } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { NcisLogo } from '../brand/NcisLogo';
 import { DemoRoleSwitcher } from './DemoRoleSwitcher';
 import { LanguageToggle } from './LanguageToggle';
 import { ThemeToggle } from './ThemeToggle';
 import { useTranslation } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
-import { Activity, BarChart3, Navigation, Menu, X, Shield } from 'lucide-react';
+import { Activity, BarChart3, Navigation, Menu, X, Shield, LogOut } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -32,7 +33,8 @@ export const Header: React.FC = () => {
   const rolePath = user ? `/dashboard/${user.role.toLowerCase().replace(/_/g, '-')}` : '/dashboard/admin';
 
   const navLinks = [
-    { to: rolePath, label: t('nav.dashboard', 'Dashboard'), icon: Activity },
+    ...(user ? [{ to: rolePath, label: t('nav.dashboard', 'My Workspace'), icon: Activity }] : []),
+    { to: '/overview', label: 'Corridor Map', icon: Shield },
     { to: '/track/ET-SHP-2026-001', label: t('nav.tracker', 'Live Tracker'), icon: Navigation },
     { to: '/statistics', label: t('nav.statistics', 'National Statistics'), icon: BarChart3 },
   ];
@@ -72,12 +74,33 @@ export const Header: React.FC = () => {
               </Link>
             );
           })}
-          <Link
-            to="/login"
-            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition shadow-xs"
-          >
-            Portal Login
-          </Link>
+
+          {user ? (
+            <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
+              <span className="text-xs text-slate-300 font-semibold hidden lg:inline max-w-[130px] truncate">
+                {user.fullName}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  logout();
+                  navigate('/');
+                }}
+                className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-rose-800/60 bg-rose-950/40 hover:bg-rose-900 text-rose-300 transition flex items-center gap-1"
+                title="Sign out of current account"
+              >
+                <LogOut className="w-3 h-3" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          ) : (
+            <Link
+              to="/"
+              className="text-xs font-bold px-3 py-1.5 rounded-lg border border-sky-500/40 bg-sky-950/40 hover:bg-sky-900/60 text-sky-300 transition shadow-xs"
+            >
+              Sign In / Sign Up
+            </Link>
+          )}
         </nav>
 
         {/* Right: Controls (Role Switcher, Language, Theme Toggle) */}
@@ -185,6 +208,34 @@ export const Header: React.FC = () => {
               </Link>
             );
           })}
+
+          {user ? (
+            <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
+              <span className="text-xs text-slate-300 font-medium">
+                {user.fullName} ({user.role.replace(/_/g, ' ')})
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  logout();
+                  setMobileMenuOpen(false);
+                  navigate('/');
+                }}
+                className="text-xs font-bold px-2.5 py-1 rounded bg-rose-950 text-rose-300 border border-rose-800 flex items-center gap-1"
+              >
+                <LogOut className="w-3 h-3" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          ) : (
+            <Link
+              to="/"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block text-center text-xs font-bold py-2 rounded-lg bg-sky-600 text-white shadow-xs"
+            >
+              Sign In / Sign Up
+            </Link>
+          )}
         </div>
       )}
     </header>

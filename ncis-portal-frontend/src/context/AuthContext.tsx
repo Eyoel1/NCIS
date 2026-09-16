@@ -98,15 +98,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch {
       // Ignore
     }
-    // Default to Super Admin for seamless development and evaluation
-    return DEMO_USERS.SUPER_ADMIN;
+    return null;
   });
 
   const [token, setToken] = useState<string | null>(() => {
     try {
-      return localStorage.getItem('ncis_token') || 'demo-token-super-admin';
+      return localStorage.getItem('ncis_token');
     } catch {
-      return 'demo-token-super-admin';
+      return null;
     }
   });
 
@@ -154,10 +153,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return true;
       }
     } catch {
-      // Fall through to demo user match
+      // Fall through to demo or registered user match
     }
 
-    // Demo bypass match
+    // Demo seed user match
     const matchingRole = (Object.keys(DEMO_USERS) as UserRole[]).find(
       (r) => DEMO_USERS[r].email.toLowerCase() === email.toLowerCase()
     );
@@ -165,6 +164,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (matchingRole) {
       switchRole(matchingRole);
       return true;
+    }
+
+    // Registered users match from localStorage
+    try {
+      const savedRaw = localStorage.getItem('ncis_registered_users');
+      if (savedRaw) {
+        const regList: User[] = JSON.parse(savedRaw);
+        const found = regList.find(u => u.email.toLowerCase() === email.toLowerCase());
+        if (found) {
+          setUser(found);
+          const newToken = `token-${found.role.toLowerCase()}-${Date.now()}`;
+          setToken(newToken);
+          localStorage.setItem('ncis_user', JSON.stringify(found));
+          localStorage.setItem('ncis_token', newToken);
+          localStorage.setItem('ncis_role', found.role);
+          return true;
+        }
+      }
+    } catch {
+      // Ignore
     }
 
     // Fallback: log in with requested email
@@ -198,6 +217,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       localStorage.setItem('ncis_user', JSON.stringify(newUser));
       localStorage.setItem('ncis_token', newToken);
       localStorage.setItem('ncis_role', newUser.role);
+
+      // Save into registered users roster
+      const savedRaw = localStorage.getItem('ncis_registered_users');
+      const existing: User[] = savedRaw ? JSON.parse(savedRaw) : [];
+      const updated = [newUser, ...existing.filter(u => u.email.toLowerCase() !== newUser.email.toLowerCase())];
+      localStorage.setItem('ncis_registered_users', JSON.stringify(updated));
     } catch {
       // Ignore
     }

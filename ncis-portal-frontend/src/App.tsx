@@ -47,9 +47,11 @@ export const App: React.FC = () => {
               <Header />
               <div className="flex-1">
                 <Routes>
-                  {/* Public Unauthenticated Routes */}
-                  <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<LoginPage />} />
+                  {/* Public Authentication & Entry Routes */}
+                  <Route path="/" element={<LoginPage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/portal" element={<LandingPage />} />
+                  <Route path="/overview" element={<LandingPage />} />
                   <Route path="/track/:id" element={<PublicTrackerPage />} />
                   <Route path="/statistics" element={<TransparencyStatsPage />} />
 
