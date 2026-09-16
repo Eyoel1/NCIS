@@ -20,10 +20,15 @@ import {
   Check,
   Tag,
   Search,
+  ArrowRight,
+  ExternalLink,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export const RegistrationDashboard: React.FC = () => {
-  const [shipments, setShipments] = useState<Shipment[]>([]);
+  const { shipments, inspectAndIssueLibre } = useShipments();
+  const navigate = useNavigate();
+
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
   const [showLibreModal, setShowLibreModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,47 +50,43 @@ export const RegistrationDashboard: React.FC = () => {
   const [vehicleCode, setVehicleCode] = useState('Code 2 (Private)');
   const [plateNumber, setPlateNumber] = useState('2-B84920 AA');
   const [plateSuccess, setPlateSuccess] = useState(false);
+  const [completedShipment, setCompletedShipment] = useState<Shipment | null>(null);
 
   useEffect(() => {
-    async function loadData() {
-      const data = await api.getShipments();
-      setShipments(data);
-      if (data.length > 0) setSelectedShipment(data[0]);
+    if (shipments.length > 0 && !selectedShipment) {
+      setSelectedShipment(shipments[0]);
     }
-    loadData();
-  }, []);
+  }, [shipments, selectedShipment]);
 
   const handleRecordInspection = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedShipment) return;
-    try {
-      await api.updateStage(
-        selectedShipment.id,
-        'DELIVERY',
-        'MOTL Technical Inspection passed 100%. Euro-4 emissions standard compliant.'
-      );
-      setInspectionSuccess(true);
-      setTimeout(() => {
-        setInspectionSuccess(false);
-        setShowInspectionModal(false);
-      }, 1500);
-    } catch {
-      // Ignore
-    }
+    setInspectionSuccess(true);
+    setTimeout(() => {
+      setInspectionSuccess(false);
+      setShowInspectionModal(false);
+    }, 1200);
   };
 
   const handleAllocatePlate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedShipment) return;
-    if (selectedShipment.vehicles?.[0]) {
-      selectedShipment.vehicles[0].registrationPlate = plateNumber;
-      selectedShipment.vehicles[0].titleIssued = true;
-    }
+    await inspectAndIssueLibre(selectedShipment.id, plateNumber);
     setPlateSuccess(true);
+    const updated = {
+      ...selectedShipment,
+      currentStage: 'DELIVERY' as const,
+      status: 'REGISTERED_TITLED' as any,
+      vehicles: selectedShipment.vehicles?.map(v => ({
+        ...v,
+        registrationPlate: plateNumber,
+        titleIssued: true,
+      }))
+    };
+    setCompletedShipment(updated);
     setTimeout(() => {
       setPlateSuccess(false);
       setShowPlateModal(false);
-    }, 1500);
+    }, 1200);
   };
 
   const filteredShipments = shipments.filter(shp => {
@@ -128,6 +129,65 @@ export const RegistrationDashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* Title Issued Celebration Banner */}
+      {completedShipment && (
+        <div className="p-5 rounded-2xl border-2 border-teal-500/40 bg-teal-950/30 backdrop-blur-sm shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in duration-300">
+          <div className="flex items-start gap-3.5">
+            <div className="p-3 rounded-xl bg-teal-500/20 text-teal-400 border border-teal-500/30 shrink-0">
+              <Award className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono font-black text-teal-400 uppercase tracking-wide">
+                  Digital Libre Title Issued & Registered: {completedShipment.trackingNumber}
+                </span>
+                <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-mono font-black text-xs">
+                  Plate: {completedShipment.vehicles?.[0]?.registrationPlate || plateNumber}
+                </span>
+              </div>
+              <h3 className="text-sm font-bold text-white mt-1">
+                {completedShipment.vehicles?.[0]?.make} {completedShipment.vehicles?.[0]?.model} ({completedShipment.vehicles?.[0]?.year}) — Chassis: {completedShipment.vehicles?.[0]?.vin}
+              </h3>
+              <p className="text-xs text-slate-300 mt-1 max-w-2xl">
+                National Single Window Import Cycle Complete! The vehicle has passed roadworthiness verification, customs clearance has been settled, and sovereign ownership has been sealed onto the cryptographic ledger.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedShipment(completedShipment);
+                setShowLibreModal(true);
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-lg transition-all"
+            >
+              <Award className="w-4 h-4" />
+              <span>View Official Digital Libre</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate(`/track/${completedShipment.trackingNumber}`)}
+              className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-400 font-bold text-xs border border-slate-700 transition"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Track Full Lifecycle</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCompletedShipment(null)}
+              className="text-xs text-slate-400 hover:text-white px-2 py-1"
+              title="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-xl">
@@ -162,6 +222,18 @@ export const RegistrationDashboard: React.FC = () => {
           <span className="text-xs text-slate-400">FTA Vehicle Inspection Bay 2</span>
         </div>
 
+        <TableToolbar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          config={{
+            searchPlaceholder: 'Search by plate, VIN, make, or owner...',
+          }}
+          onExportCsv={handleExportCsv}
+          onExportPdf={() => exportToPrintPdf('MOTL_Vehicle_Registrations')}
+          totalCount={shipments.length}
+          filteredCount={filteredShipments.length}
+        />
+
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
@@ -175,7 +247,7 @@ export const RegistrationDashboard: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-mono">
-              {shipments.map((shp) => {
+              {filteredShipments.map((shp) => {
                 const v = shp.vehicles?.[0];
                 return (
                   <tr key={shp.id} className="hover:bg-slate-800/40 transition-colors">
@@ -199,6 +271,18 @@ export const RegistrationDashboard: React.FC = () => {
                       )}
                     </td>
                     <td className="py-3 text-right space-x-2">
+                      {(v?.titleIssued || shp.currentStage === 'DELIVERY') && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedShipment(shp);
+                            setShowLibreModal(true);
+                          }}
+                          className="px-2.5 py-1 rounded bg-teal-900/80 hover:bg-teal-800 text-teal-200 border border-teal-700 text-[11px] font-bold transition-colors"
+                        >
+                          View Libre
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => {
@@ -385,6 +469,27 @@ export const RegistrationDashboard: React.FC = () => {
           onClose={() => setShowQrModal(false)}
           shipment={selectedShipment}
           vehicle={selectedShipment.vehicles[0]}
+        />
+      )}
+
+      {/* Official Digital Libre Certificate Modal */}
+      {selectedShipment && (
+        <LibreCertificateModal
+          isOpen={showLibreModal}
+          onClose={() => setShowLibreModal(false)}
+          vehicle={{
+            vin: selectedShipment.vehicles?.[0]?.vin || 'ETH9283741829',
+            make: selectedShipment.vehicles?.[0]?.make || 'Toyota',
+            model: selectedShipment.vehicles?.[0]?.model || 'Corolla Cross',
+            year: selectedShipment.vehicles?.[0]?.year || 2024,
+            engineCc: selectedShipment.vehicles?.[0]?.engineCc || 1800,
+            fuelType: selectedShipment.vehicles?.[0]?.fuelType || 'HYBRID',
+            color: selectedShipment.vehicles?.[0]?.color || 'Silver Metallic',
+            ownerName: selectedShipment.importer?.organization || selectedShipment.importer?.fullName || 'Ethio Auto Imports PLC',
+            plateNumber: selectedShipment.vehicles?.[0]?.registrationPlate || plateNumber || '2-B84920 AA',
+            registrationDate: new Date().toLocaleDateString(),
+            certificateNumber: `FDRE-MOTL-${selectedShipment.id.substring(4).toUpperCase()}`
+          }}
         />
       )}
     </div>

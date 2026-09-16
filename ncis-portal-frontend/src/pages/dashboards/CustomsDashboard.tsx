@@ -23,10 +23,16 @@ import {
   Clock,
   Layers,
   Search,
+  ArrowRight,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 export const CustomsDashboard: React.FC = () => {
   const { shipments, assessCustomsDuty } = useShipments();
+  const { setRole } = useAuth();
+  const navigate = useNavigate();
+
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(shipments[0] || null);
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [showChannelModal, setShowChannelModal] = useState(false);
@@ -34,6 +40,7 @@ export const CustomsDashboard: React.FC = () => {
   const [channelSuccess, setChannelSuccess] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [channelFilter, setChannelFilter] = useState('ALL');
+  const [nextStepShipment, setNextStepShipment] = useState<Shipment | null>(null);
 
   useEffect(() => {
     if (shipments && shipments.length > 0 && !selectedShipment) {
@@ -49,10 +56,11 @@ export const CustomsDashboard: React.FC = () => {
       const totalDuty = selectedShipment.customsAssessment?.totalPayable || Math.round(assessedCif * 0.64);
       await assessCustomsDuty(selectedShipment.id, assignedChannel, assessedCif, totalDuty);
       setChannelSuccess(true);
+      setNextStepShipment(selectedShipment);
       setTimeout(() => {
         setChannelSuccess(false);
         setShowChannelModal(false);
-      }, 1500);
+      }, 1200);
     } catch {
       // Ignore
     }
@@ -165,6 +173,33 @@ export const CustomsDashboard: React.FC = () => {
         totalCount={shipments.length}
         filteredCount={filteredShipments.length}
       />
+
+      {nextStepShipment && (
+        <div className="p-4 rounded-2xl border border-purple-500/40 bg-purple-950/40 backdrop-blur-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in-up">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-purple-400 shrink-0" />
+            <div>
+              <span className="text-xs font-bold text-purple-300 block">
+                Customs Form C-30 Tax Clearance Approved for {nextStepShipment.trackingNumber}!
+              </span>
+              <p className="text-[11px] text-slate-300">
+                Taxes settled via CBE escrow. Consignment has advanced to <strong>POST_CUSTOMS</strong> (ECTS Smart Seal Transit Convoy) stage.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setRole('TRANSPORT_FORWARDER');
+              navigate('/dashboard/transport-logistics');
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow transition shrink-0 cursor-pointer"
+          >
+            <span>Proceed to Step 6: Transport Fleet (Dispatch Convoy)</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Customs Declaration Assessment Queue */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">

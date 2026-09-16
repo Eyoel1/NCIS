@@ -23,13 +23,17 @@ import {
   CheckCircle2,
   ExternalLink,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 export const ImporterDashboard: React.FC = () => {
   const { t } = useTranslation();
   const { shipments, createShipment } = useShipments();
+  const { setRole } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [selectedForBinder, setSelectedForBinder] = useState<Shipment | null>(null);
+  const [justCreatedShipment, setJustCreatedShipment] = useState<Shipment | null>(null);
 
   // Modal states
   const [showNewShipmentModal, setShowNewShipmentModal] = useState(false);
@@ -65,7 +69,7 @@ export const ImporterDashboard: React.FC = () => {
     e.preventDefault();
     setCreating(true);
     try {
-      await createShipment({
+      const created = await createShipment({
         make,
         model,
         year,
@@ -77,6 +81,7 @@ export const ImporterDashboard: React.FC = () => {
         destinationPort: 'Modjo Dry Port',
       });
       setShowNewShipmentModal(false);
+      setJustCreatedShipment(created);
     } catch {
       // Ignore
     } finally {
@@ -190,6 +195,71 @@ export const ImporterDashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* Consignment Successfully Lodged Next-Step Flow Banner */}
+      {justCreatedShipment && (
+        <div className="p-5 rounded-2xl border-2 border-emerald-500/40 bg-emerald-950/30 backdrop-blur-sm shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in duration-300">
+          <div className="flex items-start gap-3.5">
+            <div className="p-3 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono font-black text-emerald-400 uppercase tracking-wide">
+                  Consignment Lodged: {justCreatedShipment.trackingNumber}
+                </span>
+                <StatusBadge status="PRE_IMPORT" />
+              </div>
+              <h3 className="text-sm font-bold text-white mt-1">
+                {justCreatedShipment.vehicles?.[0]?.make} {justCreatedShipment.vehicles?.[0]?.model} ({justCreatedShipment.vehicles?.[0]?.year}) — Chassis: {justCreatedShipment.vehicles?.[0]?.vin}
+              </h3>
+              <p className="text-xs text-slate-300 mt-1 max-w-2xl">
+                National Single Window Step 2: Commercial Bank of Ethiopia (CBE) must now allocate Foreign Exchange (FX) priority & endorse the commercial Letter of Credit (L/C) before vessel shipment.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setRole('FINANCIAL_INSURANCE');
+                navigate('/dashboard/financial-institution');
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg transition-all"
+            >
+              <span>Proceed to CBE Bank (Authorize FX & L/C)</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate(`/track/${justCreatedShipment.trackingNumber}`)}
+              className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-sky-400 font-bold text-xs border border-slate-700 transition"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Track Live</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedForBinder(justCreatedShipment)}
+              className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-purple-300 font-bold text-xs border border-slate-700 transition"
+            >
+              <span>7-Doc Binder</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setJustCreatedShipment(null)}
+              className="text-xs text-slate-400 hover:text-white px-2 py-1"
+              title="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-xl">
@@ -234,6 +304,21 @@ export const ImporterDashboard: React.FC = () => {
           </button>
         </div>
 
+        <TableToolbar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          selectedStage={stageFilter}
+          onStageChange={setStageFilter}
+          config={{
+            searchPlaceholder: 'Search by tracking #, VIN, or make...',
+            stageFilter: true,
+          }}
+          onExportCsv={handleExportCsv}
+          onExportPdf={() => exportToPrintPdf('My_Import_Consignments')}
+          totalCount={shipments.length}
+          filteredCount={filteredShipments.length}
+        />
+
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
@@ -248,7 +333,7 @@ export const ImporterDashboard: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-mono">
-              {shipments.map((shp) => {
+              {filteredShipments.map((shp) => {
                 const v = shp.vehicles?.[0];
                 return (
                   <tr key={shp.id} className="hover:bg-slate-800/40 transition-colors">
@@ -266,10 +351,95 @@ export const ImporterDashboard: React.FC = () => {
                     <td className="py-3">
                       <StatusBadge status={shp.delayRiskRating} />
                     </td>
-                    <td className="py-3 text-right">
+                    <td className="py-3 text-right space-x-1.5 whitespace-nowrap">
+                      {shp.currentStage === 'PRE_IMPORT' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRole('FINANCIAL_INSURANCE');
+                            navigate('/dashboard/financial-institution');
+                          }}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-800 text-[11px] font-bold transition-colors"
+                        >
+                          <span>CBE FX</span>
+                          <ArrowRight className="h-3 w-3" />
+                        </button>
+                      )}
+                      {shp.currentStage === 'SHIPPING' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRole('SHIPPING_COMPANY');
+                            navigate('/dashboard/shipping-lines');
+                          }}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded bg-sky-950 hover:bg-sky-900 text-sky-300 border border-sky-800 text-[11px] font-bold transition-colors"
+                        >
+                          <span>Carrier e-B/L</span>
+                          <ArrowRight className="h-3 w-3" />
+                        </button>
+                      )}
+                      {shp.currentStage === 'PORT_OPERATIONS' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRole('PORT_OPERATOR');
+                            navigate('/dashboard/port-terminal-operators');
+                          }}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded bg-amber-950 hover:bg-amber-900 text-amber-300 border border-amber-800 text-[11px] font-bold transition-colors"
+                        >
+                          <span>Port Gate-Out</span>
+                          <ArrowRight className="h-3 w-3" />
+                        </button>
+                      )}
+                      {shp.currentStage === 'CUSTOMS' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRole('CUSTOMS_AUTHORITY');
+                            navigate('/dashboard/customs-broker');
+                          }}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded bg-purple-950 hover:bg-purple-900 text-purple-300 border border-purple-800 text-[11px] font-bold transition-colors"
+                        >
+                          <span>Customs C-30</span>
+                          <ArrowRight className="h-3 w-3" />
+                        </button>
+                      )}
+                      {shp.currentStage === 'POST_CUSTOMS' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRole('TRANSPORT_FORWARDER');
+                            navigate('/dashboard/transport-logistics');
+                          }}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded bg-blue-950 hover:bg-blue-900 text-blue-300 border border-blue-800 text-[11px] font-bold transition-colors"
+                        >
+                          <span>Arrival</span>
+                          <ArrowRight className="h-3 w-3" />
+                        </button>
+                      )}
+                      {shp.currentStage === 'DELIVERY' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRole('VEHICLE_REGISTRATION');
+                            navigate('/dashboard/vehicle-registration-office');
+                          }}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded bg-teal-950 hover:bg-teal-900 text-teal-300 border border-teal-800 text-[11px] font-bold transition-colors"
+                        >
+                          <span>Title Libre</span>
+                          <ArrowRight className="h-3 w-3" />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedForBinder(shp)}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-purple-300 text-[11px] font-semibold transition-colors"
+                      >
+                        <span>7-Doc Binder</span>
+                      </button>
                       <Link
                         to={`/track/${shp.trackingNumber}`}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-sky-300 text-[11px] font-semibold transition-colors"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-sky-300 text-[11px] font-semibold transition-colors"
                       >
                         <span>Dossier</span>
                         <ExternalLink className="h-3 w-3" />
@@ -283,13 +453,22 @@ export const ImporterDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Duty Calculator Section */}
-      <div>
-        <h2 className="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
-          <Calculator className="h-4 w-4 text-sky-400" />
-          Pro-Forma Customs Duty & Tax Estimator
-        </h2>
-        <DutyCalculatorWidget />
+      {/* Duty Calculator & Landed Cost Predictor */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div>
+          <h2 className="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+            <Calculator className="h-4 w-4 text-sky-400" />
+            Pro-Forma Customs Duty & Tax Estimator
+          </h2>
+          <DutyCalculatorWidget />
+        </div>
+        <div>
+          <h2 className="text-sm font-bold text-white uppercase tracking-wider mb-3 flex items-center gap-2">
+            <Package className="h-4 w-4 text-emerald-400" />
+            Commercial Landed Cost Predictor (FX & Port Dwell)
+          </h2>
+          <LandedCostPredictorWidget />
+        </div>
       </div>
 
       {/* New Shipment Wizard Modal */}
@@ -482,6 +661,13 @@ export const ImporterDashboard: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* 7-Document Legal Binder Modal */}
+      <UnifiedDocumentBinderModal
+        isOpen={!!selectedForBinder}
+        onClose={() => setSelectedForBinder(null)}
+        shipment={selectedForBinder}
+      />
     </div>
   );
 };

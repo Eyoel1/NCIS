@@ -1,51 +1,32 @@
-import React, { useState } from 'react';
-import { Landmark, CheckCircle2, Clock, AlertCircle, ArrowUpRight, DollarSign } from 'lucide-react';
+import React from 'react';
+import { useShipments } from '../../context/ShipmentContext';
+import { Landmark, CheckCircle2, Clock, ArrowRight } from 'lucide-react';
 
 export const NbeFxQueueWidget: React.FC = () => {
-  const [fxAllocations, setFxAllocations] = useState([
-    {
-      id: 'NBE-FX-2026-081',
-      importer: 'Ethio Auto Imports PLC',
-      amountUsd: 38500,
-      amountEtb: 4812500,
-      queueNumber: 14,
-      category: 'Commercial Cargo (Priority Tier 2)',
-      status: 'APPROVED',
-      bankRef: 'CBE-LC-99412',
-      approvalDate: '2026-02-14'
-    },
-    {
-      id: 'NBE-FX-2026-094',
-      importer: 'Addis Motors Trading',
-      amountUsd: 22000,
-      amountEtb: 2750000,
-      queueNumber: 32,
-      category: 'Passenger EV (Incentive Tier 1)',
-      status: 'PENDING_NBE',
-      bankRef: 'AWASH-LC-8411',
-      approvalDate: 'In Review'
-    },
-    {
-      id: 'NBE-FX-2026-102',
-      importer: 'Red Sea Transit Agency',
-      amountUsd: 46000,
-      amountEtb: 5750000,
-      queueNumber: 48,
-      category: 'Heavy Freight Prime Mover',
-      status: 'PENDING_NBE',
-      bankRef: 'DASHO-LC-3392',
-      approvalDate: 'In Review'
-    }
-  ]);
+  const { shipments, authorizeFx } = useShipments();
 
-  const handleSimulateApprove = (id: string) => {
-    setFxAllocations(prev =>
-      prev.map(item =>
-        item.id === id
-          ? { ...item, status: 'APPROVED', approvalDate: 'Just Approved', queueNumber: 0 }
-          : item
-      )
-    );
+  // Combine real shipments with initial reference rows
+  const realFxRows = shipments.map((s) => {
+    const veh = s.vehicles?.[0];
+    const cifEtb = s.customsAssessment?.assessedCif || veh?.cifValue || 2850000;
+    const usd = Math.round(cifEtb / 125);
+    const isApproved = s.currentStage !== 'PRE_IMPORT';
+    return {
+      id: s.trackingNumber,
+      shipmentId: s.id,
+      importer: s.importer?.organization || s.importer?.fullName || 'Ethio Auto Imports PLC',
+      amountUsd: usd,
+      amountEtb: cifEtb,
+      category: `${veh?.year || 2024} ${veh?.make || 'Vehicle'} ${veh?.model || ''} (${veh?.fuelType || 'HYBRID'})`,
+      status: isApproved ? 'APPROVED' : 'PENDING_NBE',
+      bankRef: isApproved ? (s.notes?.match(/CBE-LC-[^\s)]+/)?.[0] || 'CBE-LC-2026-994') : 'Pending L/C Application',
+      isReal: true,
+    };
+  });
+
+  const handleApproveShipment = async (shipmentId: string, amountUsd: number) => {
+    const bankRef = `CBE-LC-2026-${Math.floor(10000 + Math.random() * 90000)}`;
+    await authorizeFx(shipmentId, bankRef, amountUsd);
   };
 
   return (
@@ -71,7 +52,7 @@ export const NbeFxQueueWidget: React.FC = () => {
       </div>
 
       <div className="space-y-3">
-        {fxAllocations.map(alloc => (
+        {realFxRows.map((alloc) => (
           <div
             key={alloc.id}
             className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 card-hover-lift"
@@ -108,10 +89,10 @@ export const NbeFxQueueWidget: React.FC = () => {
                   </span>
                 ) : (
                   <button
-                    onClick={() => handleSimulateApprove(alloc.id)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-xs transition active:scale-95"
+                    onClick={() => handleApproveShipment(alloc.shipmentId, alloc.amountUsd)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-xs transition active:scale-95 cursor-pointer"
                   >
-                    <Clock className="w-3 h-3 text-amber-300" />
+                    <Clock className="w-3.5 h-3.5 text-amber-300" />
                     <span>Authorize L/C FX</span>
                   </button>
                 )}

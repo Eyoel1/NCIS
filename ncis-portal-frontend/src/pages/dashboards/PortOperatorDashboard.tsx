@@ -16,18 +16,24 @@ import {
   CheckCircle2,
   AlertTriangle,
   Clock,
-  ArrowRight,
   ShieldCheck,
   Building,
+  ArrowRight,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 export const PortOperatorDashboard: React.FC = () => {
-  const [shipments, setShipments] = useState<Shipment[]>([]);
+  const { shipments, issueGateOut } = useShipments();
+  const { setRole } = useAuth();
+  const navigate = useNavigate();
+
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [portFilter, setPortFilter] = useState('ALL');
   const [showGateOutModal, setShowGateOutModal] = useState(false);
   const [gateOutSuccess, setGateOutSuccess] = useState(false);
+  const [nextStepShipment, setNextStepShipment] = useState<Shipment | null>(null);
 
   // Yard staging form
   const [yardSlot, setYardSlot] = useState('Sector C-4 (RoRo High Density)');
@@ -35,12 +41,10 @@ export const PortOperatorDashboard: React.FC = () => {
   const [stagingUpdated, setStagingUpdated] = useState(false);
 
   useEffect(() => {
-    async function loadData() {
-      const data = await api.getShipments();
-      setShipments(data);
+    if (shipments.length > 0 && !selectedShipment) {
+      setSelectedShipment(shipments[0]);
     }
-    loadData();
-  }, []);
+  }, [shipments, selectedShipment]);
 
   const handleUpdateStaging = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,16 +55,13 @@ export const PortOperatorDashboard: React.FC = () => {
   const handleGateOut = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedShipment) return;
-    try {
-      await api.updateStage(selectedShipment.id, 'CUSTOMS', 'Container gated out from Port Terminal; en route to Modjo Dry Port.');
-      setGateOutSuccess(true);
-      setTimeout(() => {
-        setGateOutSuccess(false);
-        setShowGateOutModal(false);
-      }, 1500);
-    } catch {
-      // Ignore
-    }
+    await issueGateOut(selectedShipment.id);
+    setGateOutSuccess(true);
+    setNextStepShipment(selectedShipment);
+    setTimeout(() => {
+      setGateOutSuccess(false);
+      setShowGateOutModal(false);
+    }, 1200);
   };
 
   const filteredShipments = shipments.filter(shp => {
@@ -229,6 +230,33 @@ export const PortOperatorDashboard: React.FC = () => {
           </form>
         </div>
       </div>
+
+      {nextStepShipment && (
+        <div className="p-4 rounded-2xl border border-amber-500/40 bg-amber-950/40 backdrop-blur-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in-up">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-amber-400 shrink-0" />
+            <div>
+              <span className="text-xs font-bold text-amber-300 block">
+                Port Gate-Out & Interchange Receipt Issued for {nextStepShipment.trackingNumber}!
+              </span>
+              <p className="text-[11px] text-slate-300">
+                Container released from Doraleh quay. Consignment has advanced to <strong>CUSTOMS</strong> assessment stage.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setRole('CUSTOMS_AUTHORITY');
+              navigate('/dashboard/customs-broker');
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow transition shrink-0 cursor-pointer"
+          >
+            <span>Proceed to Step 5: Customs Clearance (Form C-30)</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Yard Inventory & Gate-Out Clearance Table */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">

@@ -9,6 +9,8 @@ import { VehicleDossierCard } from '../components/tracking/VehicleDossierCard';
 import { CorridorMap } from '../components/map/CorridorMap';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { useTranslation } from '../context/LanguageContext';
+import { useShipments } from '../context/ShipmentContext';
+import { useAuth } from '../context/AuthContext';
 import {
   Search,
   ArrowLeft,
@@ -19,12 +21,16 @@ import {
   FileCheck2,
   CheckCircle,
   Hash,
+  ArrowRight,
+  ExternalLink,
 } from 'lucide-react';
 
 export const PublicTrackerPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { shipments: liveShipments } = useShipments();
+  const { setRole } = useAuth();
 
   const [searchVin, setSearchVin] = useState('');
   const [shipment, setShipment] = useState<Shipment | null>(null);
@@ -37,8 +43,57 @@ export const PublicTrackerPage: React.FC = () => {
       if (!id) return;
       setLoading(true);
       setError(null);
+
+      const raw = decodeURIComponent(id).trim();
+      const clean = raw.toUpperCase();
+      const norm = clean.replace(/[^A-Z0-9]/g, '');
+
+      // 1. Check live shipments from ShipmentContext first
+      const matchString = (target?: string | null) => {
+        if (!target) return false;
+        const tClean = target.trim().toUpperCase();
+        const tNorm = tClean.replace(/[^A-Z0-9]/g, '');
+        return (
+          tClean === clean ||
+          tNorm === norm ||
+          tClean.replace(/[\s_]+/g, '-') === clean.replace(/[\s_]+/g, '-')
+        );
+      };
+
+      const foundLive = liveShipments.find(
+        (s) =>
+          matchString(s.trackingNumber) ||
+          matchString(s.id) ||
+          matchString(s.billOfLadingNumber) ||
+          s.vehicles?.some((v) => matchString(v.vin) || matchString(v.registrationPlate))
+      );
+
+      if (foundLive && mounted) {
+        const stages = ['PRE_IMPORT', 'SHIPPING', 'PORT_OPERATIONS', 'CUSTOMS', 'POST_CUSTOMS', 'DELIVERY', 'COMPLETED'];
+        const idx = stages.indexOf(foundLive.currentStage);
+        const formatted: any = {
+          ...foundLive,
+          title: foundLive.title || `${foundLive.vehicles?.[0]?.make || 'Vehicle'} ${foundLive.vehicles?.[0]?.model || ''}`.trim(),
+          currentLocation: {
+            name: foundLive.currentLocationName || 'In Transit Corridor',
+            latitude: foundLive.currentLatitude || 11.595,
+            longitude: foundLive.currentLongitude || 43.148,
+          },
+          lifecycleMilestones: stages.map((stage, i) => ({
+            stage,
+            completed: i < idx || foundLive.currentStage === 'COMPLETED',
+            inProgress: i === idx && foundLive.currentStage !== 'COMPLETED',
+            timestamp: foundLive.auditLogs?.find((l) => l.stage === stage)?.timestamp || null,
+          })),
+        };
+        setShipment(formatted);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Fallback to API
       try {
-        const data = await api.trackPublic(id);
+        const data = await api.trackPublic(raw);
         if (mounted) {
           setShipment(data as Shipment);
         }
@@ -54,12 +109,13 @@ export const PublicTrackerPage: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [id]);
+  }, [id, liveShipments]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchVin.trim()) {
-      navigate(`/track/${encodeURIComponent(searchVin.trim())}`);
+      const formatted = searchVin.trim().replace(/\s+/g, '-');
+      navigate(`/track/${encodeURIComponent(formatted)}`);
     }
   };
 
@@ -144,6 +200,113 @@ export const PublicTrackerPage: React.FC = () => {
                 {shipment.currentLocation?.name || shipment.currentLocationName || 'In Transit'}
               </span>
             </div>
+          </div>
+
+          {/* Next Stage Interactive Regulatory Flow Guide */}
+          <div className="p-4 rounded-2xl border border-sky-500/30 bg-sky-950/30 backdrop-blur-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-sky-500/20 text-sky-400 shrink-0">
+                <Clock className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-[11px] uppercase tracking-wider text-sky-400 font-bold block">
+                  Current Pipeline Stage: {shipment.currentStage.replace(/_/g, ' ')}
+                </span>
+                <p className="text-xs text-slate-300 mt-0.5">
+                  {shipment.currentStage === 'PRE_IMPORT' && 'Waiting for Commercial Bank of Ethiopia (CBE) Foreign Exchange allocation & L/C issuance.'}
+                  {shipment.currentStage === 'SHIPPING' && 'L/C approved. Vessel in transit; awaiting Ocean Bill of Lading (e-B/L) endorsement.'}
+                  {shipment.currentStage === 'PORT_OPERATIONS' && 'Vessel docked at Doraleh Port; awaiting yard slot allocation and gate-out clearance.'}
+                  {shipment.currentStage === 'CUSTOMS' && 'Container arrived at Modjo; awaiting Ethiopian Customs Commission (ECC) Form C-30 tax assessment.'}
+                  {shipment.currentStage === 'POST_CUSTOMS' && 'Customs cleared; ECTS telematics smart seal active on Addis-Djibouti transit convoy.'}
+                  {shipment.currentStage === 'DELIVERY' && 'Vehicle arrived at Kality depot; awaiting physical inspection and Digital Libre title issuance.'}
+                  {shipment.currentStage === 'COMPLETED' && 'Vehicle is officially registered with regional plates and sovereign Digital Libre!'}
+                </p>
+              </div>
+            </div>
+
+            {shipment.currentStage === 'PRE_IMPORT' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setRole('FINANCIAL_INSTITUTION');
+                  navigate('/dashboard/financial-institution');
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition shrink-0"
+              >
+                <span>Switch to CBE & Authorize FX</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            )}
+
+            {shipment.currentStage === 'SHIPPING' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setRole('SHIPPING_LINE');
+                  navigate('/dashboard/shipping-lines');
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs shadow-md transition shrink-0"
+              >
+                <span>Switch to Carrier & Issue e-B/L</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            )}
+
+            {shipment.currentStage === 'PORT_OPERATIONS' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setRole('PORT_OPERATOR');
+                  navigate('/dashboard/port-terminal-operators');
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-md transition shrink-0"
+              >
+                <span>Switch to Port & Issue Gate-Out</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            )}
+
+            {shipment.currentStage === 'CUSTOMS' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setRole('CUSTOMS_AUTHORITY');
+                  navigate('/dashboard/customs-broker');
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md transition shrink-0"
+              >
+                <span>Switch to Customs & Assess Form C-30</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            )}
+
+            {shipment.currentStage === 'POST_CUSTOMS' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setRole('TRANSPORT_FORWARDER');
+                  navigate('/dashboard/transport-logistics');
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition shrink-0"
+              >
+                <span>Switch to Fleet & Log Arrival</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            )}
+
+            {shipment.currentStage === 'DELIVERY' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setRole('VEHICLE_REGISTRATION');
+                  navigate('/dashboard/vehicle-registration-office');
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition shrink-0"
+              >
+                <span>Switch to MOTL & Issue Digital Libre</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
           {/* 6-Stage Visual Stepper */}

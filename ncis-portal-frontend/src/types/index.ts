@@ -24,7 +24,8 @@ export type ShipmentStage =
   | 'PORT_OPERATIONS'
   | 'CUSTOMS'
   | 'POST_CUSTOMS'
-  | 'DELIVERY';
+  | 'DELIVERY'
+  | 'COMPLETED';
 
 export type DelayRisk = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 

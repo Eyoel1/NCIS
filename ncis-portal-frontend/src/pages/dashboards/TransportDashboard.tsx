@@ -18,14 +18,21 @@ import {
   Clock,
   Shield,
   Send,
+  ArrowRight,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 export const TransportDashboard: React.FC = () => {
-  const [shipments, setShipments] = useState<Shipment[]>([]);
+  const { shipments, dispatchConvoy, logConvoyArrival } = useShipments();
+  const { setRole } = useAuth();
+  const navigate = useNavigate();
+
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showDispatchModal, setShowDispatchModal] = useState(false);
   const [dispatchSuccess, setDispatchSuccess] = useState(false);
+  const [nextStepShipment, setNextStepShipment] = useState<Shipment | null>(null);
 
   // Dispatch form
   const [primeMoverPlate, setPrimeMoverPlate] = useState('ET-3-A9281');
@@ -38,31 +45,27 @@ export const TransportDashboard: React.FC = () => {
   const [waypointLogged, setWaypointLogged] = useState(false);
 
   useEffect(() => {
-    async function loadData() {
-      const data = await api.getShipments();
-      setShipments(data);
-      if (data.length > 0) setSelectedShipment(data[0]);
+    if (shipments.length > 0 && !selectedShipment) {
+      setSelectedShipment(shipments[0]);
     }
-    loadData();
-  }, []);
+  }, [shipments, selectedShipment]);
 
   const handleDispatchTruck = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedShipment) return;
-    try {
-      await api.updateStage(
-        selectedShipment.id,
-        'POST_CUSTOMS',
-        `Dispatched to inland truck ${primeMoverPlate}, driver ${driverName} (GPS: ${gpsTrackerId}).`
-      );
-      setDispatchSuccess(true);
-      setTimeout(() => {
-        setDispatchSuccess(false);
-        setShowDispatchModal(false);
-      }, 1500);
-    } catch {
-      // Ignore
-    }
+    await dispatchConvoy(selectedShipment.id, primeMoverPlate, driverName, gpsTrackerId);
+    setDispatchSuccess(true);
+    setTimeout(() => {
+      setDispatchSuccess(false);
+      setShowDispatchModal(false);
+    }, 1200);
+  };
+
+  const handleCompleteDelivery = async (shipmentId: string) => {
+    const target = shipments.find(s => s.id === shipmentId) || selectedShipment;
+    if (!target) return;
+    await logConvoyArrival(target.id);
+    setNextStepShipment(target);
   };
 
   const handleLogWaypoint = (e: React.FormEvent) => {
@@ -245,6 +248,33 @@ export const TransportDashboard: React.FC = () => {
         </div>
       </div>
 
+      {nextStepShipment && (
+        <div className="p-4 rounded-2xl border border-blue-500/40 bg-blue-950/40 backdrop-blur-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in-up">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-blue-400 shrink-0" />
+            <div>
+              <span className="text-xs font-bold text-blue-300 block">
+                Convoy Arrived at Kality Inspection Terminal for {nextStepShipment.trackingNumber}!
+              </span>
+              <p className="text-[11px] text-slate-300">
+                Inland transit completed and smart e-seal unsealed. Consignment has advanced to <strong>DELIVERY</strong> (MOTL Inspection & Title Issuance) stage.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setRole('VEHICLE_REGISTRATION');
+              navigate('/dashboard/vehicle-registration-office');
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow transition shrink-0 cursor-pointer"
+          >
+            <span>Proceed to Step 7: MOTL (Issue Digital Libre & Plates)</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Dispatch Fleet Table */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-800">
@@ -277,16 +307,23 @@ export const TransportDashboard: React.FC = () => {
                   <td className="py-3">
                     <StatusBadge status={shp.currentStage} />
                   </td>
-                  <td className="py-3 text-right">
+                  <td className="py-3 text-right space-x-2">
                     <button
                       type="button"
                       onClick={() => {
                         setSelectedShipment(shp);
                         setShowDispatchModal(true);
                       }}
-                      className="px-2.5 py-1 rounded bg-sky-950 text-sky-300 hover:bg-sky-900 border border-sky-800 text-[11px] font-semibold transition-colors"
+                      className="px-2.5 py-1 rounded bg-sky-950 text-sky-300 hover:bg-sky-900 border border-sky-800 text-[11px] font-semibold transition-colors cursor-pointer"
                     >
                       Assign Prime Mover
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCompleteDelivery(shp.id)}
+                      className="px-2.5 py-1 rounded bg-emerald-950 text-emerald-300 hover:bg-emerald-900 border border-emerald-800 text-[11px] font-semibold transition-colors cursor-pointer"
+                    >
+                      Arrived at Kality →
                     </button>
                   </td>
                 </tr>

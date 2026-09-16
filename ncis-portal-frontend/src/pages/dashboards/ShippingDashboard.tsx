@@ -19,14 +19,20 @@ import {
   Clock,
   ArrowRight,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 export const ShippingDashboard: React.FC = () => {
-  const [shipments, setShipments] = useState<Shipment[]>([]);
+  const { shipments, endorseBol } = useShipments();
+  const { setRole } = useAuth();
+  const navigate = useNavigate();
+
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
   const [showEBolModal, setShowEBolModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showBolModal, setShowBolModal] = useState(false);
   const [bolSuccess, setBolSuccess] = useState(false);
+  const [nextStepShipment, setNextStepShipment] = useState<Shipment | null>(null);
 
   // Sea transit status form
   const [vesselName, setVesselName] = useState('MV Horn Pioneer');
@@ -34,26 +40,22 @@ export const ShippingDashboard: React.FC = () => {
   const [transitUpdated, setTransitUpdated] = useState(false);
 
   useEffect(() => {
-    async function loadData() {
-      const data = await api.getShipments();
-      setShipments(data);
+    if (shipments.length > 0 && !selectedShipment) {
+      setSelectedShipment(shipments[0]);
     }
-    loadData();
-  }, []);
+  }, [shipments, selectedShipment]);
 
   const handleIssueBol = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedShipment) return;
-    try {
-      await api.updateStage(selectedShipment.id, 'SHIPPING', 'Bill of Lading officially issued by Horn Maritime Line.');
-      setBolSuccess(true);
-      setTimeout(() => {
-        setBolSuccess(false);
-        setShowBolModal(false);
-      }, 1500);
-    } catch {
-      // Ignore
-    }
+    const bolNumber = selectedShipment.billOfLadingNumber || `HML-BOL-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    await endorseBol(selectedShipment.id, bolNumber, vesselName);
+    setBolSuccess(true);
+    setNextStepShipment(selectedShipment);
+    setTimeout(() => {
+      setBolSuccess(false);
+      setShowBolModal(false);
+    }, 1200);
   };
 
   const handleUpdateTransit = (e: React.FormEvent) => {
@@ -231,6 +233,33 @@ export const ShippingDashboard: React.FC = () => {
           </form>
         </div>
       </div>
+
+      {nextStepShipment && (
+        <div className="p-4 rounded-2xl border border-sky-500/40 bg-sky-950/40 backdrop-blur-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in-up">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-sky-400 shrink-0" />
+            <div>
+              <span className="text-xs font-bold text-sky-300 block">
+                Electronic Bill of Lading (e-B/L) Endorsed for {nextStepShipment.trackingNumber}!
+              </span>
+              <p className="text-[11px] text-slate-300">
+                Title legally endorsed. The consignment has automatically advanced to <strong>PORT_OPERATIONS</strong> stage.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setRole('PORT_OPERATOR');
+              navigate('/dashboard/port-terminal-operators');
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow transition shrink-0 cursor-pointer"
+          >
+            <span>Proceed to Step 4: Port Operator (Doraleh Gate-Out)</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Cargo Manifest & B/L Issuance Table */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">

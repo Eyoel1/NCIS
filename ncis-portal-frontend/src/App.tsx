@@ -62,16 +62,22 @@ export const App: React.FC = () => {
                     <Route path="importer-supplier" element={<ImporterDashboard />} />
                     <Route path="shipping" element={<ShippingDashboard />} />
                     <Route path="shipping-company" element={<ShippingDashboard />} />
+                    <Route path="shipping-lines" element={<ShippingDashboard />} />
                     <Route path="port" element={<PortOperatorDashboard />} />
                     <Route path="port-operator" element={<PortOperatorDashboard />} />
+                    <Route path="port-terminal-operators" element={<PortOperatorDashboard />} />
                     <Route path="customs" element={<CustomsDashboard />} />
                     <Route path="customs-authority" element={<CustomsDashboard />} />
+                    <Route path="customs-broker" element={<CustomsDashboard />} />
                     <Route path="forwarder" element={<TransportDashboard />} />
                     <Route path="transport-forwarder" element={<TransportDashboard />} />
+                    <Route path="transport-logistics" element={<TransportDashboard />} />
                     <Route path="finance" element={<FinanceDashboard />} />
                     <Route path="financial-insurance" element={<FinanceDashboard />} />
+                    <Route path="financial-institution" element={<FinanceDashboard />} />
                     <Route path="registration" element={<RegistrationDashboard />} />
                     <Route path="vehicle-registration" element={<RegistrationDashboard />} />
+                    <Route path="vehicle-registration-office" element={<RegistrationDashboard />} />
                   </Route>
 
                   {/* Fallback */}

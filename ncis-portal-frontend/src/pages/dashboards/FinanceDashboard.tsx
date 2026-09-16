@@ -9,6 +9,8 @@ import { api } from '../../services/api';
 import { Shipment } from '../../types';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Modal } from '../../components/common/Modal';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import {
   Landmark,
   ShieldCheck,
@@ -19,10 +21,14 @@ import {
   DollarSign,
   FileCheck,
   Building2,
+  ArrowRight,
 } from 'lucide-react';
 
 export const FinanceDashboard: React.FC = () => {
-  const [shipments, setShipments] = useState<Shipment[]>([]);
+  const { shipments, authorizeFx } = useShipments();
+  const { setRole } = useAuth();
+  const navigate = useNavigate();
+
   const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [stageFilter, setStageFilter] = useState('ALL');
@@ -35,23 +41,26 @@ export const FinanceDashboard: React.FC = () => {
   const [lcSuccess, setLcSuccess] = useState(false);
   const [escrowSuccess, setEscrowSuccess] = useState(false);
   const [insuranceSuccess, setInsuranceSuccess] = useState(false);
+  const [nextStepShipment, setNextStepShipment] = useState<Shipment | null>(null);
 
   useEffect(() => {
-    async function loadData() {
-      const data = await api.getShipments();
-      setShipments(data);
-      if (data.length > 0) setSelectedShipment(data[0]);
+    if (shipments.length > 0 && !selectedShipment) {
+      setSelectedShipment(shipments[0]);
     }
-    loadData();
-  }, []);
+  }, [shipments, selectedShipment]);
 
   const handleValidateLc = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedShipment) return;
+    const bankRef = `CBE-LC-2026-${Math.floor(10000 + Math.random() * 90000)}`;
+    const amountUsd = Math.round((selectedShipment.vehicles?.[0]?.cifValue || 2850000) / 125);
+    await authorizeFx(selectedShipment.id, bankRef, amountUsd);
     setLcSuccess(true);
+    setNextStepShipment(selectedShipment);
     setTimeout(() => {
       setLcSuccess(false);
       setShowLcModal(false);
-    }, 1500);
+    }, 1200);
   };
 
   const handleSettleEscrow = async (e: React.FormEvent) => {
@@ -147,6 +156,33 @@ export const FinanceDashboard: React.FC = () => {
           <p className="text-[11px] text-emerald-400 mt-0.5">ECC Collateral Vault</p>
         </div>
       </div>
+
+      {nextStepShipment && (
+        <div className="p-4 rounded-2xl border border-emerald-500/40 bg-emerald-950/40 backdrop-blur-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in-up">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+            <div>
+              <span className="text-xs font-bold text-emerald-300 block">
+                L/C & Foreign Exchange Authorized for {nextStepShipment.trackingNumber}!
+              </span>
+              <p className="text-[11px] text-slate-300">
+                SWIFT MT-700 issued. The consignment has automatically advanced to <strong>SHIPPING</strong> stage.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setRole('SHIPPING_LINE');
+              navigate('/dashboard/shipping-lines');
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs shadow transition shrink-0 cursor-pointer"
+          >
+            <span>Proceed to Step 3: Shipping Line (Issue e-B/L)</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* CBE Trade Finance & Insurance Operations Table */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">

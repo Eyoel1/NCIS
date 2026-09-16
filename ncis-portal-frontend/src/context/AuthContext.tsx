@@ -82,7 +82,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password?: string, twoFactorCode?: string) => Promise<boolean>;
   register: (userData: { email: string; fullName: string; role: UserRole; organization?: string; phone?: string }) => Promise<boolean>;
-  switchRole: (role: UserRole) => void;
+  switchRole: (role: UserRole | string) => void;
+  setRole: (role: UserRole | string) => void;
   logout: () => void;
   demoBypassActive: boolean;
 }
@@ -109,15 +110,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   });
 
-  const switchRole = (role: UserRole) => {
+  const ROLE_ALIASES: Record<string, UserRole> = {
+    FINANCIAL_INSTITUTION: 'FINANCIAL_INSURANCE',
+    FINANCE: 'FINANCIAL_INSURANCE',
+    SHIPPING_LINE: 'SHIPPING_COMPANY',
+    SHIPPING: 'SHIPPING_COMPANY',
+    PORT: 'PORT_OPERATOR',
+    CUSTOMS: 'CUSTOMS_AUTHORITY',
+    TRANSPORT: 'TRANSPORT_FORWARDER',
+    REGISTRATION: 'VEHICLE_REGISTRATION',
+    ADMIN: 'SUPER_ADMIN',
+  };
+
+  const switchRole = (roleInput: UserRole | string) => {
+    const role: UserRole = (ROLE_ALIASES[roleInput] || roleInput) as UserRole;
     const newUser = DEMO_USERS[role] || DEMO_USERS.SUPER_ADMIN;
-    const newToken = `demo-token-${role.toLowerCase()}`;
+    const newToken = `demo-token-${(newUser.role || 'super_admin').toLowerCase()}`;
     setUser(newUser);
     setToken(newToken);
     try {
       localStorage.setItem('ncis_user', JSON.stringify(newUser));
       localStorage.setItem('ncis_token', newToken);
-      localStorage.setItem('ncis_role', role);
+      localStorage.setItem('ncis_role', newUser.role);
     } catch {
       // Local storage unavailable
     }
@@ -210,6 +224,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isAuthenticated: !!user,
         login,
         switchRole,
+        setRole: switchRole,
         register,
         logout,
         demoBypassActive: true,
