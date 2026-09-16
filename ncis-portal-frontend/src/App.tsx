@@ -2,6 +2,9 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext';
+import { ShipmentProvider } from './context/ShipmentContext';
+import { GlobalNotificationToasts } from './components/common/GlobalNotificationToasts';
+import { EmergencyBroadcastBanner } from './components/common/EmergencyBroadcastBanner';
 import { LanguageProvider } from './context/LanguageContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { Header } from './components/common/Header';
@@ -36,8 +39,11 @@ export const App: React.FC = () => {
       <ThemeProvider>
         <LanguageProvider>
           <AuthProvider>
-            <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <ShipmentProvider>
+              <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
               <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col antialiased transition-colors duration-200">
+              <EmergencyBroadcastBanner />
+              <GlobalNotificationToasts />
               <Header />
               <div className="flex-1">
                 <Routes>
@@ -74,6 +80,7 @@ export const App: React.FC = () => {
               </div>
             </div>
           </BrowserRouter>
+            </ShipmentProvider>
         </AuthProvider>
       </LanguageProvider>
     </ThemeProvider>

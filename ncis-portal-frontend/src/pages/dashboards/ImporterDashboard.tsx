@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useShipments } from '../../context/ShipmentContext';
+import { UnifiedDocumentBinderModal } from '../../components/documents/UnifiedDocumentBinderModal';
 import { LandedCostPredictorWidget } from '../../components/importer/LandedCostPredictorWidget';
 import { TableToolbar } from '../../components/common/TableToolbar';
 import { exportToCsv } from '../../utils/exportCsv';
@@ -25,8 +27,9 @@ import { Link } from 'react-router-dom';
 
 export const ImporterDashboard: React.FC = () => {
   const { t } = useTranslation();
-  const [shipments, setShipments] = useState<Shipment[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { shipments, createShipment } = useShipments();
+  const [loading, setLoading] = useState(false);
+  const [selectedForBinder, setSelectedForBinder] = useState<Shipment | null>(null);
 
   // Modal states
   const [showNewShipmentModal, setShowNewShipmentModal] = useState(false);
@@ -53,25 +56,16 @@ export const ImporterDashboard: React.FC = () => {
   const [stageFilter, setStageFilter] = useState('ALL');
 
   useEffect(() => {
-    async function loadShipments() {
-      try {
-        const data = await api.getShipments();
-        setShipments(data);
-        if (data.length > 0) setSelectedShipmentId(data[0].id);
-      } catch {
-        // Ignore
-      } finally {
-        setLoading(false);
-      }
+    if (shipments.length > 0 && !selectedShipmentId) {
+      setSelectedShipmentId(shipments[0].id);
     }
-    loadShipments();
-  }, []);
+  }, [shipments, selectedShipmentId]);
 
   const handleCreateShipment = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreating(true);
     try {
-      const created = await api.createShipment({
+      await createShipment({
         make,
         model,
         year,
@@ -79,10 +73,9 @@ export const ImporterDashboard: React.FC = () => {
         fuelType,
         cifValue,
         vin: vin || `ETH${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
-        originPort: 'Jebel Ali, UAE',
+        originPort: 'Port of Jebel Ali, UAE',
         destinationPort: 'Modjo Dry Port',
       });
-      setShipments((prev) => [created, ...prev]);
       setShowNewShipmentModal(false);
     } catch {
       // Ignore

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useShipments } from '../../context/ShipmentContext';
 import { api } from '../../services/api';
 import { Shipment, CustomsDeclaration } from '../../types';
 import { StatusBadge } from '../../components/common/StatusBadge';
@@ -25,8 +26,8 @@ import {
 } from 'lucide-react';
 
 export const CustomsDashboard: React.FC = () => {
-  const [shipments, setShipments] = useState<Shipment[]>(MOCK_SHIPMENTS);
-  const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(MOCK_SHIPMENTS[0] || null);
+  const { shipments, assessCustomsDuty } = useShipments();
+  const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(shipments[0] || null);
   const [showPdfModal, setShowPdfModal] = useState(false);
   const [showChannelModal, setShowChannelModal] = useState(false);
   const [assignedChannel, setAssignedChannel] = useState<'GREEN' | 'YELLOW' | 'RED'>('GREEN');
@@ -35,29 +36,18 @@ export const CustomsDashboard: React.FC = () => {
   const [channelFilter, setChannelFilter] = useState('ALL');
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        const data = await api.getShipments();
-        if (data && data.length > 0) {
-          setShipments(data);
-          setSelectedShipment(data[0]);
-        }
-      } catch {
-        // Fallback to MOCK_SHIPMENTS
-      }
+    if (shipments && shipments.length > 0 && !selectedShipment) {
+      setSelectedShipment(shipments[0]);
     }
-    loadData();
-  }, []);
+  }, [shipments, selectedShipment]);
 
   const handleUpdateChannel = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedShipment) return;
     try {
-      await api.updateStage(
-        selectedShipment.id,
-        'POST_CUSTOMS',
-        `Customs declaration approved. Inspection channel set to ${assignedChannel}. Form C-30 generated.`
-      );
+      const assessedCif = selectedShipment.customsAssessment?.assessedCif || selectedShipment.vehicles?.[0]?.cifValue || 3850000;
+      const totalDuty = selectedShipment.customsAssessment?.totalPayable || Math.round(assessedCif * 0.64);
+      await assessCustomsDuty(selectedShipment.id, assignedChannel, assessedCif, totalDuty);
       setChannelSuccess(true);
       setTimeout(() => {
         setChannelSuccess(false);
