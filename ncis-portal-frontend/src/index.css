@@ -64,6 +64,53 @@
   color: #0f172a;
 }
 
+/* Light mode high-contrast text rules (prevents inverted white text on light cards) */
+:root:not(.dark) .text-slate-900,
+:root:not(.dark) [class*="text-slate-900"] {
+  color: #0f172a !important;
+}
+
+:root:not(.dark) .text-slate-850,
+:root:not(.dark) [class*="text-slate-850"] {
+  color: #151d2f !important;
+}
+
+:root:not(.dark) .text-slate-800,
+:root:not(.dark) [class*="text-slate-800"] {
+  color: #1e293b !important;
+}
+
+:root:not(.dark) .text-slate-700,
+:root:not(.dark) [class*="text-slate-700"] {
+  color: #334155 !important;
+}
+
+:root:not(.dark) .text-slate-600,
+:root:not(.dark) [class*="text-slate-600"] {
+  color: #475569 !important;
+}
+
+:root:not(.dark) .text-slate-500,
+:root:not(.dark) [class*="text-slate-500"] {
+  color: #64748b !important;
+}
+
+/* Light mode surface guarantees (prevents inverted dark slate on light mode) */
+:root:not(.dark) .bg-slate-50,
+:root:not(.dark) [class*="bg-slate-50"]:not([class*="dark:"]) {
+  background-color: #f8fafc !important;
+}
+
+:root:not(.dark) .bg-slate-100,
+:root:not(.dark) [class*="bg-slate-100"]:not([class*="dark:"]) {
+  background-color: #f1f5f9 !important;
+}
+
+:root:not(.dark) .bg-slate-200,
+:root:not(.dark) [class*="bg-slate-200"]:not([class*="dark:"]) {
+  background-color: #e2e8f0 !important;
+}
+
 /* Light mode form controls normalization */
 :root:not(.dark) input:not([type="submit"]):not([type="button"]):not([type="reset"]),
 :root:not(.dark) select,
@@ -88,6 +135,12 @@
 }
 :root:not(.dark) .border-slate-700 {
   border-color: #cbd5e1;
+}
+:root:not(.dark) .border-slate-300 {
+  border-color: #cbd5e1;
+}
+:root:not(.dark) .border-slate-200 {
+  border-color: #e2e8f0;
 }
 
 /* Light mode card subtle shadow */
